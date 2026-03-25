@@ -1,0 +1,1 @@
+Smoke CI job and Dockerfile added: see .github/workflows/ci.yml and Dockerfile.smoke

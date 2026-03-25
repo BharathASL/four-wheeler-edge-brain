@@ -1,0 +1,12 @@
+/.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+models/
+*.bin
+*.so
+*.dll
+*.log
+/.mypy_cache/
