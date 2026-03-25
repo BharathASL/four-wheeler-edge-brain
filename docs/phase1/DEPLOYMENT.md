@@ -42,7 +42,7 @@ Notes & recommendations
 
 ```bash
 source .venv/bin/activate
-python examples/phase1_poc/main.py
+python main.py
 ```
 
 Security

@@ -24,7 +24,7 @@ This file lists the architecture overview and a task checklist for Phase‑1 and
 - [x] Add unit tests for Decision Engine (mock adapters) — completed 2026-03-26 (added tests + conftest to ensure imports)
 - [x] Add timeout and runtime error handling for model calls (`LlamaAdapter`, `DecisionEngine`) — completed 2026-03-26
 - [x] Add telemetry & logging module (`src/telemetry.py`) — completed 2026-03-25
-- [x] Add runtime entrypoint for Phase‑1 PoC (`examples/phase1_poc/main.py`) — completed 2026-03-26
+- [x] Add runtime entrypoint for Phase‑1 PoC (`main.py`) — completed 2026-03-26
 - [x] Add deployment docs and systemd unit example (`docs/phase1/DEPLOYMENT.md`, `docs/phase1/robot.service`) — completed 2026-03-26
 - [x] Create portable audio+camera template (WSLg + Pi) — completed 2026-03-26 (`docs/phase1/PORTABLE_AUDIO_CAMERA_TEMPLATE.md`)
 - [x] Design and document robot software architecture (adapters + interfaces) — completed 2026-03-26 (`docs/phase1/ARCHITECTURE.md`, `docs/ADAPTERS.md`)

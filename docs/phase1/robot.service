@@ -10,7 +10,7 @@ WorkingDirectory=/home/pi/four-wheeler-robot
 # Activate virtualenv and run the PoC entrypoint. Adjust paths as needed.
 Environment=MODEL_PATH=/mnt/ssd/models/tinyllama-q4.bin
 Environment=LLAMA_LIB_PATH=/home/pi/llama.cpp/libllama.so
-ExecStart=/home/pi/.venv/bin/python /home/pi/four-wheeler-robot/examples/phase1_poc/main.py
+ExecStart=/home/pi/.venv/bin/python /home/pi/four-wheeler-robot/main.py
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

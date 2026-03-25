@@ -67,23 +67,23 @@ This file is the source of truth for planning and progress tracking in the repos
 
 | Task | Phase | Status | Priority | Blocked By | Notes |
 |---|---|---|---|---|---|
-| Add real-model mode switch (mock vs llama-cpp via env/flag) | Phase 1.1 - Reliability & Safety Hardening | To do | P0 | None | Allows WSL and Pi parity |
+| Add real-model mode switch (mock vs llama-cpp via env/flag) | Phase 1.1 - Reliability & Safety Hardening | Done (Implemented) | P0 | None | Implemented in simulation runtime with env/CLI options |
 | Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | To do | P0 | None | Prepare quality testing before Pi arrives |
 | Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | To do | P0 | None | Improves reliability confidence |
 | Run Pi bring-up validation and record latency/memory/temperature metrics | Phase 1.1 - Reliability & Safety Hardening | Blocked (Hardware) | P0 | Raspberry Pi hardware | Use existing runbook and script |
 
 ## Top 10 Next Actions
 
-1. Add real-model mode switch (mock vs llama-cpp) in the main simulation flow.
-2. Build AI evaluation harness for action-quality checks.
-3. Add failure-injection tests for model timeout/unavailable/malformed outputs.
-4. Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU).
-5. Decide and document vision detector baseline and performance targets.
-6. Draft command-interface spec for brain <-> robot mobility bridge.
-7. Procure Raspberry Pi target compute and docking components.
-8. Procure microphone, speaker, and camera for hardware integration.
-9. Start mobility interface implementation preserving ACTION contract.
-10. Run Pi validation script and record baseline runtime metrics once hardware arrives.
+1. Build AI evaluation harness for action-quality checks.
+2. Add failure-injection tests for model timeout/unavailable/malformed outputs.
+3. Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU).
+4. Decide and document vision detector baseline and performance targets.
+5. Draft command-interface spec for brain <-> robot mobility bridge.
+6. Procure Raspberry Pi target compute and docking components.
+7. Procure microphone, speaker, and camera for hardware integration.
+8. Start mobility interface implementation preserving ACTION contract.
+9. Run Pi validation script and record baseline runtime metrics once hardware arrives.
+10. Integrate AI harness output into tracker acceptance notes.
 
 ---
 

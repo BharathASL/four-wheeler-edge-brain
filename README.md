@@ -29,13 +29,52 @@ pip install -r requirements.txt
 3. Run the Phase‑1 PoC simulation:
 
 ```bash
-python examples/phase1_poc/main.py
+python main.py
+```
+
+Model mode selection:
+
+- Default mode is mock (safe for WSL/dev)
+- Real llama-cpp mode can be enabled with env vars or CLI flags
+
+Environment-variable example:
+
+```bash
+export MODEL_MODE=real
+export MODEL_PATH=/absolute/path/to/model.gguf
+# optional
+export LLAMA_LIB_PATH=/absolute/path/to/libllama.so
+python main.py
+```
+
+CLI example:
+
+```bash
+python main.py --model-mode real --model-path /absolute/path/to/model.gguf
+```
+
+Use strict model mode to fail fast instead of falling back to mock:
+
+```bash
+python main.py --model-mode real --model-path /absolute/path/to/model.gguf --strict-model
 ```
 
 Optional: enable text-to-speech output:
 
 ```bash
-python examples/phase1_poc/main.py --tts
+python main.py --tts
+```
+
+Test direct chat capabilities (bypasses action mapping and prints model text):
+
+```bash
+python main.py --chat-mode --model-mode real --model-path /absolute/path/to/model.gguf --strict-model
+```
+
+Tune multi-turn chat memory depth (number of prior user/assistant turns to include):
+
+```bash
+python main.py --chat-mode --chat-history-turns 6 --model-mode real --model-path /absolute/path/to/model.gguf --strict-model
 ```
 
 Simulation includes a background battery task:
