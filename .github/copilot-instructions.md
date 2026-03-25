@@ -1,5 +1,6 @@
 ---
-title: Copilot / Workspace Instructions
+name: Copilot Workspace Instructions
+description: Repository-wide instructions for Copilot behavior and project constraints.
 --
 
 # Project: Autonomous 4‑Wheeler Robot — Workspace Instructions
@@ -75,6 +76,8 @@ Developer UX
 Conventions for changes
 - If adding native dependencies, update `docs/TINYLLAMA_SETUP.md` and add clear build steps for the Pi.
 - If changing `requirements.txt`, ensure the package is available on both platforms or document platform-specific install steps.
+- Treat `docs/TASK_TRACKER.md` as the planning source of truth.
+- If scope, plan, phase, priority, or task status changes, update `docs/TASK_TRACKER.md` in the same change.
 
 Contact / maintainer note
 - Add maintainers in the repo `README.md` with contact details and recommended Pi hardware and model information.

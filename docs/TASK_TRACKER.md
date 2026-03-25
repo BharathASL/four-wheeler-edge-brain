@@ -2,6 +2,13 @@
 
 This file is the source of truth for planning and progress tracking in the repository.
 
+## Tracker Governance
+
+- Always follow this tracker for planning and execution order.
+- If plan, scope, phase, priority, or status changes, update this file in the same change.
+- Do not close tasks in conversation-only updates; reflect status changes here first.
+- Keep notes concise and action-oriented so the tracker remains readable.
+
 ## Status Legend
 
 - To do
