@@ -180,7 +180,10 @@ def chat_loop(
     strict_model: bool = False,
     max_tokens: int = 128,
     history_turns: int = 4,
+    memory_db_path: str = "data/conversations.sqlite",
 ):
+    from src.conversation_memory import ConversationMemoryStore
+
     def _clean_chat_reply(text: str) -> str:
         cleaned = (text or "").strip()
         for marker in ("\nUser:", "\nuser:", "User:", "user:"):
@@ -188,7 +191,21 @@ def chat_loop(
                 cleaned = cleaned.split(marker, 1)[0].strip()
         return cleaned
 
+    def _identify_speaker(store: ConversationMemoryStore):
+        while True:
+            speaker_name = input("speaker> Who is speaking? ").strip()
+            if not speaker_name:
+                print("Please enter a non-empty speaker name")
+                continue
+            speaker_id, is_new = store.get_or_create_user(speaker_name)
+            if is_new:
+                print(f"New speaker profile created for: {speaker_name}")
+            else:
+                print(f"Welcome back: {speaker_name}")
+            return speaker_id, speaker_name
+
     logger = init_telemetry("phase1_chat")
+    memory_store = ConversationMemoryStore(db_path=memory_db_path)
     llama, effective_mode = _build_llama_adapter(
         model_mode=model_mode,
         model_path=model_path,
@@ -196,13 +213,13 @@ def chat_loop(
         strict_model=strict_model,
         logger=logger,
     )
+    speaker_id, speaker_name = _identify_speaker(memory_store)
 
     print("Starting chat mode (Ctrl-C to stop)")
     print(f"Model mode: requested={model_mode} active={effective_mode}")
     print("Type 'quit' or 'exit' to stop")
+    print("Type '/switch' to switch speaker profile")
     print(f"Chat history window: last {history_turns} turns")
-
-    conversation = []
 
     try:
         while True:
@@ -212,11 +229,16 @@ def chat_loop(
             if user.lower() in ("quit", "exit"):
                 print("exit command received")
                 break
+            if user.lower() == "/switch":
+                speaker_id, speaker_name = _identify_speaker(memory_store)
+                continue
 
-            recent = conversation[-history_turns:] if history_turns > 0 else []
+            recent = memory_store.get_recent_turns(speaker_id, limit=history_turns)
             history_lines = [
                 "You are an offline robot assistant.",
                 "Reply briefly and clearly.",
+                f"Current speaker name: {speaker_name}",
+                "Use prior turns for continuity when they are relevant.",
             ]
             for turn in recent:
                 history_lines.append(f"User: {turn['user']}")
@@ -229,7 +251,7 @@ def chat_loop(
                 reply = llama.generate(prompt, max_tokens=max_tokens, timeout=20)
                 cleaned_reply = _clean_chat_reply(reply) or "[empty response]"
                 print("assistant>", cleaned_reply)
-                conversation.append({"user": user, "assistant": cleaned_reply})
+                memory_store.append_turn(speaker_id, user, cleaned_reply)
             except Exception as exc:
                 logger.exception("chat_generation_failed")
                 print(f"assistant> [error] {exc}")
@@ -248,11 +270,13 @@ def main():
         env_mode = os.getenv("MODEL_MODE", "mock")
         env_model_path = os.getenv("MODEL_PATH", "")
         env_lib_path = os.getenv("LLAMA_LIB_PATH", "")
+        env_memory_db_path = os.getenv("MEMORY_DB_PATH", "data/conversations.sqlite")
 
         cli_mode = env_mode
         cli_model_path = env_model_path
         cli_lib_path = env_lib_path
         cli_history_turns = 4
+        cli_memory_db_path = env_memory_db_path
 
         for idx, token in enumerate(sys.argv):
             if token == "--model-mode" and idx + 1 < len(sys.argv):
@@ -267,6 +291,8 @@ def main():
                 except ValueError:
                     print("Invalid --chat-history-turns value; defaulting to 4")
                     cli_history_turns = 4
+            if token == "--memory-db-path" and idx + 1 < len(sys.argv):
+                cli_memory_db_path = sys.argv[idx + 1]
 
         if chat_mode:
             chat_loop(
@@ -275,6 +301,7 @@ def main():
                 llama_lib_path=cli_lib_path,
                 strict_model=strict_model,
                 history_turns=cli_history_turns,
+                memory_db_path=cli_memory_db_path,
             )
             return
 

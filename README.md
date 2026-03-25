@@ -71,10 +71,22 @@ Test direct chat capabilities (bypasses action mapping and prints model text):
 python main.py --chat-mode --model-mode real --model-path /absolute/path/to/model.gguf --strict-model
 ```
 
+Chat mode now asks for a speaker name at startup and stores per-speaker conversation history in SQLite.
+
+- If the speaker name is new, a new profile is created.
+- If the speaker already exists, previous turns are loaded into the prompt for contextual replies.
+- Use `/switch` during chat to change speaker profile.
+
 Tune multi-turn chat memory depth (number of prior user/assistant turns to include):
 
 ```bash
 python main.py --chat-mode --chat-history-turns 6 --model-mode real --model-path /absolute/path/to/model.gguf --strict-model
+```
+
+Optional: override memory database location:
+
+```bash
+python main.py --chat-mode --memory-db-path data/conversations.sqlite
 ```
 
 Simulation includes a background battery task:

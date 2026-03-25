@@ -68,22 +68,28 @@ This file is the source of truth for planning and progress tracking in the repos
 | Task | Phase | Status | Priority | Blocked By | Notes |
 |---|---|---|---|---|---|
 | Add real-model mode switch (mock vs llama-cpp via env/flag) | Phase 1.1 - Reliability & Safety Hardening | Done (Implemented) | P0 | None | Implemented in simulation runtime with env/CLI options |
+| Add manual speaker identification flow for chat sessions | Phase 1.1 - Reliability & Safety Hardening | Done (Implemented) | P0 | None | Chat now prompts for speaker identity and supports profile switching |
+| Add persistent per-speaker conversation memory (SQLite) | Phase 1.1 - Reliability & Safety Hardening | Done (Implemented) | P0 | None | Per-speaker turns are stored and reused for contextual answers |
+| Add SQLite FTS retrieval for long-history recall | Phase 1.1 - Reliability & Safety Hardening | To do | P0 | None | Retrieve relevant older turns without loading full history into prompt |
+| Define objective migration gate (latency + recall metrics) for FAISS adoption | Phase 1.1 - Reliability & Safety Hardening | To do | P1 | None | Switch only when SQLite retrieval misses quality or latency targets |
+| Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) | Phase 1.1 - Reliability & Safety Hardening | To do | P1 | Migration gate complete | Keep metadata/filtering in SQLite; use FAISS for semantic nearest-neighbor |
 | Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | To do | P0 | None | Prepare quality testing before Pi arrives |
 | Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | To do | P0 | None | Improves reliability confidence |
+| Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale | Phase 1.1 - Reliability & Safety Hardening | To do | P2 | Migration gate complete | Consider once conversation volume grows beyond simple SQLite recall |
 | Run Pi bring-up validation and record latency/memory/temperature metrics | Phase 1.1 - Reliability & Safety Hardening | Blocked (Hardware) | P0 | Raspberry Pi hardware | Use existing runbook and script |
 
 ## Top 10 Next Actions
 
 1. Build AI evaluation harness for action-quality checks.
-2. Add failure-injection tests for model timeout/unavailable/malformed outputs.
-3. Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU).
-4. Decide and document vision detector baseline and performance targets.
-5. Draft command-interface spec for brain <-> robot mobility bridge.
-6. Procure Raspberry Pi target compute and docking components.
-7. Procure microphone, speaker, and camera for hardware integration.
-8. Start mobility interface implementation preserving ACTION contract.
-9. Run Pi validation script and record baseline runtime metrics once hardware arrives.
-10. Integrate AI harness output into tracker acceptance notes.
+2. Add SQLite FTS retrieval for long-history conversation recall.
+3. Add failure-injection tests for model timeout/unavailable/malformed outputs.
+4. Define objective FAISS migration metrics (recall@k and latency thresholds).
+5. Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU).
+6. Decide and document vision detector baseline and performance targets.
+7. Draft command-interface spec for brain <-> robot mobility bridge.
+8. Procure Raspberry Pi target compute and docking components.
+9. Procure microphone, speaker, and camera for hardware integration.
+10. Run Pi validation script and record baseline runtime metrics once hardware arrives.
 
 ---
 
