@@ -16,7 +16,7 @@ High level modules (kept hardware-agnostic):
   - Phase‑1: deterministic rules + optional small local model
 
 - Action Executor
-  - Responsibility: perform or simulate actions (MOVE, DOCK, CHARGE, RECORD)
+  - Responsibility: perform or simulate currently supported actions (MOVE, STOP, IDLE, DOCK, ESTOP, RESET_ESTOP, OVERRIDE_ON, OVERRIDE_OFF, MODEL_SUGGESTION)
   - Abstracts hardware interfaces behind commands
 
 - Background Tasks

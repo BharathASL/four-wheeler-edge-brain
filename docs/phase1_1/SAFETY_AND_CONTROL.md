@@ -70,7 +70,7 @@ Emergency stop is highest-priority safety action.
 
 Triggers:
 
-- Explicit command: `stop`, `emergency stop`, `e-stop`
+- Explicit command: `emergency stop`, `e-stop` (plain `stop` maps to non-emergency `STOP`)
 - Hardware e-stop signal
 - Critical safety fault (watchdog + hazard condition)
 

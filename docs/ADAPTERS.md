@@ -117,8 +117,15 @@ Output result schema:
 
 Phase-1 supported actions:
 
+- MOVE
+- IDLE
 - STOP
+- ESTOP
+- RESET_ESTOP
 - DOCK
+- OVERRIDE_ON
+- OVERRIDE_OFF
+- MODEL_SUGGESTION
 - MODEL_SUGGESTION
 
 ## State Manager Contract
