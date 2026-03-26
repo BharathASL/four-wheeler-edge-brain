@@ -3,7 +3,7 @@
 This document explains how to deploy the Phase‑1 PoC on a Raspberry Pi using the example `robot.service` unit provided in this folder.
 
 Prerequisites
-- A Raspberry Pi with a 64-bit OS (Ubuntu 22.04 or Raspberry Pi OS 64-bit)
+- A Raspberry Pi with Ubuntu Server 24.04 64-bit
 - Project checkout at `/home/<user>/four-wheeler-robot` (adjust paths below)
 - Python 3.10+, virtualenv with dependencies installed
 - Optional: compiled `llama.cpp` library and a quantized GGML model on disk

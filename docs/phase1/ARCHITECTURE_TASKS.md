@@ -28,7 +28,7 @@ This file lists the architecture overview and a task checklist for Phase‑1 and
 - [x] Add deployment docs and systemd unit example (`docs/phase1/DEPLOYMENT.md`, `docs/phase1/robot.service`) — completed 2026-03-26
 - [x] Create portable audio+camera template (WSLg + Pi) — completed 2026-03-26 (`docs/phase1/PORTABLE_AUDIO_CAMERA_TEMPLATE.md`)
 - [x] Design and document robot software architecture (adapters + interfaces) — completed 2026-03-26 (`docs/phase1/ARCHITECTURE.md`, `docs/ADAPTERS.md`)
-- [x] CI: Windows job (unit tests with mocks); optional ARM job for smoke tests — completed 2026-03-26
+- [x] CI: Ubuntu 24.04 job (unit tests with mocks); optional ARM job for smoke tests — completed 2026-03-26
 - [x] Documentation: adapter API reference (`docs/ADAPTERS.md`) — completed 2026-03-26
 
 ## How we'll use this file

@@ -5,6 +5,29 @@ from src.state_manager import StateManager
 from src.decision_engine import DecisionEngine
 
 
+class _TimeoutLlama:
+    def generate(self, prompt, max_tokens=128, timeout=None):
+        raise TimeoutError("timed out")
+
+
+class _UnavailableLlama:
+    def generate(self, prompt, max_tokens=128, timeout=None):
+        raise RuntimeError("runtime missing")
+
+
+class _BrokenLlama:
+    def generate(self, prompt, max_tokens=128, timeout=None):
+        raise ValueError("bad output")
+
+
+class _MalformedLlama:
+    def __init__(self, response):
+        self.response = response
+
+    def generate(self, prompt, max_tokens=128, timeout=None):
+        return self.response
+
+
 def test_decision_rules_stop():
     state = StateManager()
     de = DecisionEngine()
@@ -35,3 +58,58 @@ def test_decision_model_fallback():
     assert action["action"] == "IDLE"
     assert action["params"].get("reason") == "UNKNOWN_COMMAND"
     assert action["params"].get("confirmation_required") is True
+
+
+def test_decision_model_timeout_falls_back_to_safe_idle():
+    state = StateManager()
+    de = DecisionEngine(llama_adapter=_TimeoutLlama())
+
+    action = de.decide("explore the area", state.snapshot())
+
+    assert action["action"] == "IDLE"
+    assert action["params"]["reason"] == "MODEL_TIMEOUT"
+    assert action["params"]["confirmation_required"] is True
+
+
+def test_decision_model_unavailable_falls_back_to_safe_idle():
+    state = StateManager()
+    de = DecisionEngine(llama_adapter=_UnavailableLlama())
+
+    action = de.decide("explore the area", state.snapshot())
+
+    assert action["action"] == "IDLE"
+    assert action["params"]["reason"] == "MODEL_UNAVAILABLE"
+    assert action["params"]["confirmation_required"] is True
+
+
+def test_decision_model_error_falls_back_to_safe_idle():
+    state = StateManager()
+    de = DecisionEngine(llama_adapter=_BrokenLlama())
+
+    action = de.decide("explore the area", state.snapshot())
+
+    assert action["action"] == "IDLE"
+    assert action["params"]["reason"] == "MODEL_ERROR"
+    assert action["params"]["confirmation_required"] is True
+
+
+def test_decision_model_malformed_output_falls_back_to_safe_idle():
+    state = StateManager()
+    de = DecisionEngine(llama_adapter=_MalformedLlama(None))
+
+    action = de.decide("explore the area", state.snapshot())
+
+    assert action["action"] == "IDLE"
+    assert action["params"]["reason"] == "MODEL_MALFORMED_OUTPUT"
+    assert action["params"]["confirmation_required"] is True
+
+
+def test_decision_model_blank_output_falls_back_to_safe_idle():
+    state = StateManager()
+    de = DecisionEngine(llama_adapter=_MalformedLlama("   "))
+
+    action = de.decide("explore the area", state.snapshot())
+
+    assert action["action"] == "IDLE"
+    assert action["params"]["reason"] == "MODEL_MALFORMED_OUTPUT"
+    assert action["params"]["confirmation_required"] is True

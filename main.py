@@ -70,6 +70,42 @@ def _build_llama_adapter(model_mode: str, model_path: str, lib_path: str, strict
     return llama, "real"
 
 
+def process_command_text(user_input, state, decision_engine, executor):
+    if not user_input:
+        return None
+
+    state.set("last_command_ts", time.time())
+    action = decision_engine.decide(user_input, state.snapshot())
+    result = executor.execute(action)
+    if action.get("action") == "DOCK":
+        state.update(is_charging=True, is_idle=True)
+    return {"input": user_input, "action": action, "result": result}
+
+
+def process_listener_once(listener, state, decision_engine, executor):
+    user_input = listener.poll_once()
+    listener_error = listener.take_error()
+
+    if listener_error:
+        action = {
+            "action": "IDLE",
+            "params": {
+                "reason": listener_error,
+                "confirmation_required": True,
+            },
+        }
+        result = executor.execute(action)
+        return {"input": None, "action": action, "result": result, "error": listener_error}
+
+    if not user_input:
+        return None
+
+    if user_input.lower() in ("quit", "exit"):
+        return {"input": user_input, "exit": True}
+
+    return process_command_text(user_input, state, decision_engine, executor)
+
+
 def simulate_loop(
     enable_tts: bool = False,
     model_mode: str = "mock",
@@ -147,17 +183,16 @@ def simulate_loop(
                     tts.speak("Auto dock triggered")
 
             print(f"Battery: {state.get('battery_level')}% | Charging: {state.get('is_charging')}")
-            user = listener.poll_once()
-            if not user:
+            outcome = process_listener_once(listener, state, de, execer)
+            if outcome is None:
                 continue
-            state.set("last_command_ts", time.time())
-            if user.lower() in ("quit", "exit"):
+            if outcome.get("exit"):
                 print("exit command received")
                 break
-            action = de.decide(user, state.snapshot())
-            result = execer.execute(action)
-            if action.get("action") == "DOCK":
-                state.update(is_charging=True, is_idle=True)
+            action = outcome["action"]
+            result = outcome["result"]
+            if outcome.get("error"):
+                print("Input Error:", outcome["error"])
             print("Action:", action)
             print("Result:", result)
             logger.info("action=%s result=%s", action, result)

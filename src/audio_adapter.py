@@ -1,7 +1,10 @@
-"""Audio adapter: real and mock implementations.
+"""Audio and speech adapters: real and mock implementations.
 
-Keep the interface minimal: `record(duration)` and `play(waveform)`.
-Real adapter should wrap `sounddevice` or other backend; tests should use `MockAudioAdapter`.
+Keep the interfaces minimal:
+- `AudioAdapter.record(duration)` and `AudioAdapter.play(audio_data)`
+- `SpeechToTextAdapter.transcribe(audio_data)`
+
+Real adapters should wrap concrete backends; tests should use the mock adapters.
 """
 from typing import Any
 
@@ -30,4 +33,25 @@ class MockAudioAdapter(AudioAdapter):
         return None
 
 
-__all__ = ["AudioAdapter", "MockAudioAdapter"]
+class SpeechToTextAdapter:
+    def transcribe(self, audio_data: bytes) -> str:
+        """Return the recognized text for `audio_data`."""
+        raise NotImplementedError()
+
+
+class MockSpeechToTextAdapter(SpeechToTextAdapter):
+    def __init__(self, response: str = "mock transcription"):
+        self.response = response
+        self.transcriptions = []
+
+    def transcribe(self, audio_data: bytes) -> str:
+        self.transcriptions.append(audio_data)
+        return self.response
+
+
+__all__ = [
+    "AudioAdapter",
+    "MockAudioAdapter",
+    "SpeechToTextAdapter",
+    "MockSpeechToTextAdapter",
+]
