@@ -58,6 +58,9 @@ def _contains_any_expected(rows: List[Dict[str, str]], expected_tokens: List[str
 
 def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     query_set = _load_query_set(args.query_set)
+    db_path = Path(args.db_path)
+    if db_path.exists():
+        db_path.unlink()
     store = ConversationMemoryStore(db_path=args.db_path)
 
     speaker_name = query_set.get("speaker_name", "migration-gate-eval-user")
