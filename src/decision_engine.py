@@ -71,7 +71,7 @@ class DecisionEngine:
             except TimeoutError:
                 return {"action": "IDLE", "params": {"reason": "MODEL_TIMEOUT", "confirmation_required": True}}
             except RuntimeError:
-                # Runtime (native lib missing) — fall back to NO_OP so tests/dev don't crash
+                # Runtime (native lib missing) — fall back to IDLE so tests/dev don't crash
                 return {"action": "IDLE", "params": {"reason": "MODEL_UNAVAILABLE", "confirmation_required": True}}
             except Exception:
                 return {"action": "IDLE", "params": {"reason": "MODEL_ERROR", "confirmation_required": True}}
