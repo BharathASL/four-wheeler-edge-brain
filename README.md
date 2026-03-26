@@ -13,6 +13,14 @@ Target hardware & model (initial analysis)
 - Note: expect higher latency and smaller conversational capability compared to 7B+ models; tune prompts and quantization accordingly.
 
 Quick start
+0. On a fresh WSL Ubuntu machine, bootstrap system packages, virtualenv, and Python deps:
+
+```bash
+bash scripts/setup_wsl_dev.sh
+```
+
+Use `--dry-run` first if you want to inspect the commands before they execute.
+
 1. Create and activate a virtual environment:
 
 ```bash
@@ -124,5 +132,7 @@ Simulation includes a background battery task:
 - During docking/charging, battery refills in the simulation.
 
 See `docs/` for architecture and roadmap details.
+
+WSL-specific setup and audio/camera notes live in `docs/phase1/WSL_AUDIO_CAMERA.md`.
 
 Project task tracking is maintained in `docs/TASK_TRACKER.md`.

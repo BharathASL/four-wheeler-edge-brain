@@ -59,13 +59,21 @@ class DecisionEngine:
             prompt = f"Decide action for input: {user_input}\nState: {state}\nReturn JSON with action and params."
             try:
                 resp = self.llama.generate(prompt, max_tokens=128, timeout=self.model_timeout)
+                if not isinstance(resp, str) or not resp.strip():
+                    return {
+                        "action": "IDLE",
+                        "params": {
+                            "reason": "MODEL_MALFORMED_OUTPUT",
+                            "confirmation_required": True,
+                        },
+                    }
                 # Unknown command path: ask for confirmation and stay safe/idle.
                 return {
                     "action": "IDLE",
                     "params": {
                         "reason": "UNKNOWN_COMMAND",
                         "confirmation_required": True,
-                        "model_hint": resp,
+                        "model_hint": resp.strip(),
                     },
                 }
             except TimeoutError:

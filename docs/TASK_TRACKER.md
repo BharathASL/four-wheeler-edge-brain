@@ -33,6 +33,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Get speaker (USB speaker or small amp + speaker) | Phase 0 - Parts & Setup | 🟡 To do | P2 | Hardware purchase | Needed for real TTS output |
 | Get USB camera (Phase 3) | Phase 0 - Parts & Setup | 🟡 To do | P2 | Hardware purchase | Needed for live vision capture |
 | Procure development compute (WSL-capable PC, Python 3.10+) | Phase 0 - Parts & Setup | ✅ Done (Implemented) | P1 | None | WSL development active |
+| Add WSL bootstrap setup script for fresh dev machines | Phase 0 - Parts & Setup | ✅ Done (Implemented) | P1 | None | Added scripts/setup_wsl_dev.sh to install Ubuntu packages, create venv, and install repo deps |
 | Procure target compute (Raspberry Pi + accessories) | Phase 0 - Parts & Setup | 🟡 To do | P1 | Hardware purchase | Planned for later |
 | Draft Bill of Materials (BOM) for all required components | Phase 0 - Parts & Setup | 🟡 To do | P1 | None | Single source of truth for procurement; create docs/phase0/BOM.md |
 | Select and document motor HAT / driver board | Phase 0 - Parts & Setup | 🟡 To do | P1 | None | e.g., Adafruit Motor HAT, L298N, MDD10A — decision gates Phase 1.2 motor wiring |
@@ -56,8 +57,8 @@ This file is the source of truth for planning and progress tracking in the repos
 | Define max speed + proximity clamps | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Implemented in safety_controller |
 | Add watchdog timers + manual override | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Watchdog task and override handling added |
 | Define emergency stop behavior | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | ESTOP latch/reset implemented |
-| Implement STT failure degradation to deterministic safe behavior | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P0 | None | Validation checklist item unchecked; add Vosk failure path and test coverage |
-| Add end-to-end integration test (Input → Decision → Executor → State) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P0 | None | No full-loop test exists; unit tests cover modules in isolation only |
+| Implement STT failure degradation to deterministic safe behavior | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Speech input listener now degrades STT failures to safe IDLE behavior with test coverage |
+| Add end-to-end integration test (Input → Decision → Executor → State) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added synchronous loop coverage around the runtime command-processing path |
 | Add rate limiting / cooldown on model calls | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | None | Prevent model spam on rapid input; implement debounce or queue limit |
 | Define and enforce log rotation / log file size policy | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | None | Telemetry logs without rotation; add RotatingFileHandler or logrotate config |
 | Add input sanitization (guard against prompt injection) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | None | User input passed directly to model prompt; strip/escape dangerous patterns |
@@ -119,7 +120,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Define objective migration gate (latency + recall metrics) for FAISS adoption | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Evaluator script records recall@k and latency percentiles with threshold decision |
 | Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Migration gate complete | Keep metadata/filtering in SQLite; use FAISS for semantic nearest-neighbor |
 | Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added evaluator script with thresholded pass/fail and JSON report |
-| Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P0 | None | Improves reliability confidence |
+| Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Decision engine tests now cover timeout, unavailable runtime, generic error, and malformed output |
 | Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P2 | Migration gate complete | Consider once conversation volume grows beyond simple SQLite recall |
 | Run Pi bring-up validation and record latency/memory/temperature metrics | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Raspberry Pi hardware | Use existing runbook and script |
 
@@ -169,12 +170,12 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ## Top 10 Next Actions
 
-1. 🟡 Add failure-injection tests for model timeout/unavailable/malformed outputs (P0 — Phase 1.1).
-2. 🟡 Implement STT failure degradation to deterministic safe behavior and add test coverage (P0 — Phase 1.1 validation gap).
-3. 🟡 Add end-to-end integration test covering full Input → Decision → Executor → State loop (P0 — Phase 1.1).
-4. 🟡 Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
-5. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
-6. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
+1. 🟡 Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
+2. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
+3. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
+4. 🟡 Add rate limiting / cooldown on model calls (P1 — Phase 1.1).
+5. 🟡 Define and enforce log rotation / log file size policy (P1 — Phase 1.1).
+6. 🟡 Add input sanitization (guard against prompt injection) (P1 — Phase 1.1).
 7. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
 8. 🟡 Draft command-interface spec for brain <-> robot mobility bridge (P0 — Phase 2).
 9. 🟡 Validate migration-gate thresholds with retrieval benchmark data across long conversations (P1 — Phase 1.1).
@@ -182,4 +183,4 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ---
 
-Last updated: 2026-03-26 (gap analysis — added Phase 1.2, Phase 2.1, Phase 4.5, Phase 8 and 40+ missing tasks across all phases)
+Last updated: 2026-03-26 (Phase 1.1 reliability validation completed for failure-injection coverage, STT safe fallback, integration testing, and WSL bootstrap setup)

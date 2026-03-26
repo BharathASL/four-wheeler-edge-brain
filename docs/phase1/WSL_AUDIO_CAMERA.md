@@ -2,6 +2,32 @@
 
 Notes to help develop on Windows using WSL2/WSLg and to mirror Pi behavior.
 
+## One-time WSL bootstrap
+
+Use the repository bootstrap script on a fresh Ubuntu-based WSL instance:
+
+```bash
+bash scripts/setup_wsl_dev.sh
+```
+
+Useful flags:
+
+```bash
+# inspect commands without changing the machine
+bash scripts/setup_wsl_dev.sh --dry-run
+
+# install deps into a different virtualenv and run a smoke test
+bash scripts/setup_wsl_dev.sh --venv-path .venv-wsl --run-smoke-test
+```
+
+What the script does:
+
+- installs required Ubuntu packages for Python builds, audio tooling, and basic camera utilities
+- creates a project virtual environment
+- upgrades pip/setuptools/wheel
+- installs `requirements.txt`
+- optionally runs `tests/test_smoke.py`
+
 ## Camera access (WSL2)
 
 - Windows: install `usbipd-win` to forward USB cameras into WSL:
