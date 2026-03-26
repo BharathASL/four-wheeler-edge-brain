@@ -24,8 +24,8 @@ Use `--dry-run` first if you want to inspect the commands before they execute.
 1. Create and activate a virtual environment:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # or .venv\Scripts\activate on Windows
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 2. Install minimal deps:

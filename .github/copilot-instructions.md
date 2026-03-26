@@ -9,24 +9,24 @@ Purpose
 - Describe the project's development vs production environment and give clear instructions so contributors and tooling (Copilot/agents) can work consistently.
 
 Environments
-- Development: Windows (primary development environment). Use a Python virtual environment and the repository `requirements.txt` for all Python dependencies.
+- Development: WSL2 + WSLg using Ubuntu 24.04. Use a Python virtual environment and the repository `requirements.txt` for all Python dependencies.
 - Production targets:
-    - Phase 1: Raspberry Pi 4 (4GB).
+    - Phase 1: Raspberry Pi 4 (4GB) on Ubuntu Server 24.04.
     - Later phases: Raspberry Pi 5 (8GB recommended), while keeping portability across supported Pi models.
 - Code must support both development and production environments at all times.
 
 Principles
 - Environment parity: keep `requirements.txt` identical for dev and prod where possible. Native components (compiled libraries) will differ and must be built on the target platform.
 - Platform detection: code must detect runtime platform and load platform-specific adapters or compiled libraries safely.
-- Fail safe: when a native runtime or model cannot be loaded (e.g., missing ARM lib on Windows), fall back to a mock or a lightweight stub.
+- Fail safe: when a native runtime or model cannot be loaded (e.g., missing ARM lib in WSL or on an unprepared Pi), fall back to a mock or a lightweight stub.
 
 Files to consult
-- Project README: [README.md](README.md)
- - Phase 1: [docs/phase1/PHASE1.md](docs/phase1/PHASE1.md)
- - Phase 1 setup: [docs/phase1/TINYLLAMA_SETUP.md](docs/phase1/TINYLLAMA_SETUP.md)
-- Architecture notes: [docs/phase1/ARCHITECTURE.md](docs/phase1/ARCHITECTURE.md)
-- Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
-- Python deps: [requirements.txt](requirements.txt)
+- Project README: [README.md](../README.md)
+ - Phase 1: [docs/phase1/PHASE1.md](../docs/phase1/PHASE1.md)
+ - Phase 1 setup: [docs/phase1/TINYLLAMA_SETUP.md](../docs/phase1/TINYLLAMA_SETUP.md)
+- Architecture notes: [docs/phase1/ARCHITECTURE.md](../docs/phase1/ARCHITECTURE.md)
+- Roadmap: [docs/ROADMAP.md](../docs/ROADMAP.md)
+- Python deps: [requirements.txt](../requirements.txt)
 
 Quick rules for contributors
 1. Use the same Python version locally and on the Pi (3.10+ recommended).
@@ -39,13 +39,13 @@ Platform detection (recommended snippet)
 ```python
 import platform
 IS_PI = platform.machine().startswith('arm') or 'raspberry' in platform.uname().node.lower()
-IS_WINDOWS = platform.system() == 'Windows'
+IS_WSL = 'microsoft' in platform.uname().release.lower() or 'wsl' in platform.uname().release.lower()
 
 if IS_PI:
     # import or load ARM/NEON-compiled library
     pass
-elif IS_WINDOWS:
-    # import Windows-friendly stub or local dev binary
+elif IS_WSL:
+    # import WSL-friendly stub or Linux dev binary
     pass
 ```
 
@@ -59,22 +59,22 @@ Environment variables (suggested)
 - `LLAMA_LIB_PATH` — optional path to compiled `llama.cpp` shared library.
 - `ROBOT_ENV` — `dev` or `prod` (useful for tests and CI)
 
-Development on Windows
+Development on WSL2 / WSLg (Ubuntu 24.04)
 - Create virtualenv and install `requirements.txt`.
 - Mock or skip ARM-only native calls; provide a `mocks/` adapter for local testing.
-- Optionally use WSL2 with Ubuntu to build cross-platform native binaries.
+- Keep development inside the Ubuntu 24.04 WSL environment; do not rely on native Windows Python support.
 
 Production on Raspberry Pi 5
-- Use a 64‑bit OS (Ubuntu 22.04 or Raspberry Pi OS 64‑bit).
+- Use Ubuntu Server 24.04 64‑bit.
 - Create a venv and install Python deps.
 - Build `llama.cpp` on the Pi with ARM/NEON optimizations; ensure the compiled lib is present for `llama-cpp-python`.
 
 Testing & CI
 - Keep unit tests independent of native binaries by mocking the model runtime.
-- CI should run Python unit tests on Windows (dev) and, if possible, include a separate job that builds `llama.cpp` for ARM and runs basic smoke tests via QEMU or an ARM runner.
+- CI should run Python unit tests on Ubuntu 24.04 and, if possible, include a separate job that builds `llama.cpp` for ARM and runs basic smoke tests via QEMU or an ARM runner.
 
 Developer UX
-- If code detects that the native runtime is missing, provide a clear message with suggested commands (how to build on Pi or enable WSL build). Do not crash silently.
+- If code detects that the native runtime is missing, provide a clear message with suggested commands (how to build on Pi or complete the WSL setup). Do not crash silently.
 
 Conventions for changes
 - If adding native dependencies, update `docs/phase1/TINYLLAMA_SETUP.md` and add clear build steps for the Pi.

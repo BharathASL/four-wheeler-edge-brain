@@ -1,7 +1,7 @@
 <!-- Moved from docs/PHASE1.md -->
 # Phase 1 — Edge Brain (TinyLlama on Raspberry Pi 4)
 
-This document describes the Phase‑1 PoC environment, TinyLlama runtime notes, and installation/run steps. Development is carried out on Windows (developer machines) and the production target for Phase‑1 is Raspberry Pi 4 (4GB) running a 64‑bit OS.
+This document describes the Phase‑1 PoC environment, TinyLlama runtime notes, and installation/run steps. Development is carried out inside WSL2 + WSLg on Ubuntu 24.04, and the production target for Phase‑1 is Raspberry Pi 4 (4GB) running Ubuntu Server 24.04.
 
 ## Goals
 
@@ -20,13 +20,13 @@ Because TinyLlama runs as a local runtime (via `llama.cpp`), aim for environment
 
 - Use the same Python version on dev and Pi (Python 3.10+ recommended).
 - Use a virtual environment for both dev and production runs and install from the same `requirements.txt`.
-- `llama.cpp` is a native component: compile it for ARM/NEON on the Pi. During Windows development, run with a mocked adapter or use WSL2 for a closer runtime.
+- `llama.cpp` is a native component: compile it for ARM/NEON on the Pi. During development, run with a mocked adapter inside WSL2/WSLg for a closer Linux runtime.
 
 Note: native libraries (the `llama.cpp` binary / lib) must be compiled for ARM on the Pi. Keep Python-level code platform-agnostic and provide a mock or adapter so unit tests run on Windows without native binaries.
 
 ## Install & setup (recommended)
 
-1. Prepare the Pi with a 64‑bit OS (Ubuntu 22.04 / Raspberry Pi OS 64‑bit) and enable SSH if desired.
+1. Prepare the Pi with Ubuntu Server 24.04 64-bit and enable SSH if desired.
 2. Create and activate a Python virtual environment:
 
 ```bash
@@ -49,7 +49,7 @@ pip install -r requirements.txt
 
 ## Run the Phase‑1 PoC (text-only / unit test approach)
 
-At this stage we maintain parity between Windows development and the Pi deployment by keeping native calls behind adapters and using tests/mocks on Windows.
+At this stage we maintain parity between WSL Ubuntu development and the Pi deployment by keeping native calls behind adapters and using tests/mocks in WSL.
 
 - Install dependencies and run unit tests to validate Decision Engine logic (no native `llama.cpp` required for tests).
 
@@ -68,7 +68,7 @@ pytest -q
 
 ## Production parity checklist
 
-- Use the same `requirements.txt` in dev and production. For Windows-only development without audio or native libs, install selectively or use a virtualenv per workflow.
+- Use the same `requirements.txt` in dev and production. Development should happen inside WSL Ubuntu 24.04, with native calls mocked unless explicitly validated.
 - Verify `llama.cpp` is compiled on the Pi and works with `llama-cpp-python`.
 - Validate one sample inference on the device and measure latency & memory.
 - If memory is insufficient, quantify further or reduce context size.
