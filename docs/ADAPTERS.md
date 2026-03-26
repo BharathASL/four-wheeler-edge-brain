@@ -95,8 +95,13 @@ Known action values:
 
 Known IDLE reasons:
 
+- EMPTY_COMMAND
+- MODEL_COOLDOWN
+- MODEL_ERROR
+- MODEL_MALFORMED_OUTPUT
 - MODEL_TIMEOUT
 - MODEL_UNAVAILABLE
+- UNKNOWN_COMMAND
 
 ## Input Listener Contract
 

@@ -282,7 +282,7 @@ class ConversationMemoryStore:
                     FROM conversation_turns_fts
                     WHERE user_id = ?
                       AND conversation_turns_fts MATCH ?
-                                        ORDER BY bm25(conversation_turns_fts), turn_id DESC
+                    ORDER BY bm25(conversation_turns_fts), turn_id DESC
                     LIMIT ?
                     """,
                     (user_id, fts_query, limit),
