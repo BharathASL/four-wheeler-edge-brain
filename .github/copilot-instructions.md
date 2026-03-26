@@ -1,7 +1,7 @@
 ---
 name: Copilot Workspace Instructions
 description: Repository-wide instructions for Copilot behavior and project constraints.
---
+---
 
 # Project: Autonomous 4‑Wheeler Robot — Workspace Instructions
 
@@ -24,7 +24,7 @@ Files to consult
 - Project README: [README.md](README.md)
  - Phase 1: [docs/phase1/PHASE1.md](docs/phase1/PHASE1.md)
  - Phase 1 setup: [docs/phase1/TINYLLAMA_SETUP.md](docs/phase1/TINYLLAMA_SETUP.md)
-- Architecture notes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Architecture notes: [docs/phase1/ARCHITECTURE.md](docs/phase1/ARCHITECTURE.md)
 - Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
 - Python deps: [requirements.txt](requirements.txt)
 
@@ -51,7 +51,7 @@ elif IS_WINDOWS:
 
 Native libraries & model runtime
 - `llama.cpp` (GGML) must be compiled for ARM on the Pi. The Python package `llama-cpp-python` expects a compiled library or will use a system-installed shared library.
-- Build `llama.cpp` on the Pi (or cross-compile in CI) and document the build steps in `docs/TINYLLAMA_SETUP.md` (TODO).
+- Build `llama.cpp` on the Pi (or cross-compile in CI) and document the build steps in `docs/phase1/TINYLLAMA_SETUP.md` (TODO).
 - Model files (GGML .bin) should be stored on external SSD (recommended) and not checked in to the repo. Use `MODEL_PATH` environment variable to point to the model file.
 
 Environment variables (suggested)
@@ -77,7 +77,7 @@ Developer UX
 - If code detects that the native runtime is missing, provide a clear message with suggested commands (how to build on Pi or enable WSL build). Do not crash silently.
 
 Conventions for changes
-- If adding native dependencies, update `docs/TINYLLAMA_SETUP.md` and add clear build steps for the Pi.
+- If adding native dependencies, update `docs/phase1/TINYLLAMA_SETUP.md` and add clear build steps for the Pi.
 - If changing `requirements.txt`, ensure the package is available on both platforms or document platform-specific install steps.
 - Treat `docs/TASK_TRACKER.md` as the planning source of truth.
 - If scope, plan, phase, priority, or task status changes, update `docs/TASK_TRACKER.md` in the same change.
@@ -87,4 +87,4 @@ Contact / maintainer note
 
 ---
 
-If you want, I can also add `docs/TINYLLAMA_SETUP.md` with concrete `llama.cpp` build commands for Raspberry Pi 5 and an example `MODEL_PATH` loader. Reply with "Add build doc" to proceed.
+If you want, I can also add `docs/phase1/TINYLLAMA_SETUP.md` with concrete `llama.cpp` build commands for Raspberry Pi 5 and an example `MODEL_PATH` loader. Reply with "Add build doc" to proceed.
