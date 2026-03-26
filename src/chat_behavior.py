@@ -12,6 +12,115 @@ from src.model_rate_limiter import ModelRateLimiter
 ChatTurn = Dict[str, str]
 MODEL_COOLDOWN_REPLY = "Please wait a moment before asking another model-heavy question."
 
+_SKIP_REPLY_PREFIXES = (
+    "speaker:",
+    "known facts:",
+    "question:",
+    "questio:",
+    "grounded sentence:",
+    "short grounded sentence:",
+    "short sentence:",
+    "memory user:",
+    "memory assistant:",
+    "current user message:",
+    "recent conversation:",
+    "system:",
+)
+_REPLY_TOKENS = ("<|assistant|>", "<|user|>", "<|system|>", "<|im_start|>", "<|im_end|>", "[INST]", "[/INST]")
+_PROMPT_LEAK_MARKERS = (
+    "speaker:",
+    "known facts:",
+    "question:",
+    "memory user:",
+    "memory assistant:",
+    "current user message:",
+    "recent conversation:",
+    "system:",
+    "<|assistant|>",
+    "<|user|>",
+    "<|system|>",
+    "[inst]",
+    "[/inst]",
+)
+_PERSONAL_FACT_PATTERNS = (
+    r"\bmy favorite\s+[a-z]+\s+is\s+",
+    r"\bi had\s+.+?\s+for\s+(breakfast|lunch|dinner)\b",
+    r"\bi live in\s+",
+    r"\bmy name is\s+",
+    r"\bi prefer\s+",
+    r"\bcall me\s+",
+    r"\brefer to me as\s+",
+)
+
+
+def _normalize_text(text: str) -> str:
+    return " ".join((text or "").strip().lower().split())
+
+
+def _canonical_fact_key(text: str) -> str:
+    normalized = _normalize_text(text)
+    if not normalized:
+        return ""
+
+    patterns = (
+        (r"\bmy favorite\s+([a-z]+)\s+is\b", "favorite:{}"),
+        (r"\bi had\s+.+?\s+for\s+(breakfast|lunch|dinner)\b", "meal:{}"),
+        (r"\b(call me|refer to me as|from now on call me)\b", "alias"),
+        (r"\bi live in\s+([a-z0-9\- ]+)\b", "location"),
+        (r"\bmy name is\s+([a-z0-9\- ]+)\b", "name"),
+        (r"\bi prefer\s+([a-z0-9\- ]+)\b", "preference:{}"),
+    )
+    for pattern, key_template in patterns:
+        match = re.search(pattern, normalized)
+        if not match:
+            continue
+        if "{}" in key_template and match.lastindex:
+            return key_template.format(match.group(match.lastindex).strip())
+        return key_template
+
+    return trim_snippet(normalized, max_chars=60)
+
+
+def _strip_memory_instruction(text: str) -> str:
+    stripped = str(text or "").strip()
+    stripped = re.sub(r"[\s,.!?:;-]*remember\s+(this|that)\b[\s,.!?:;-]*$", "", stripped, flags=re.IGNORECASE)
+    return stripped.strip()
+
+
+def _ensure_sentence(text: str) -> str:
+    cleaned = str(text or "").strip()
+    if not cleaned:
+        return ""
+    if cleaned.endswith((".", "!", "?")):
+        return cleaned
+    return cleaned + "."
+
+
+def format_memory_fact_for_reply(fact: str) -> str:
+    candidate = _strip_memory_instruction(fact)
+    lowered = candidate.lower()
+    patterns = (
+        (r"^my favorite\s+([a-z]+)\s+is\s+(.+)$", lambda m: f"your favorite {m.group(1)} is {m.group(2).strip()}"),
+        (r"^i had\s+(.+?)\s+for\s+(breakfast|lunch|dinner)$", lambda m: f"you had {m.group(1).strip()} for {m.group(2)}"),
+        (r"^i live in\s+(.+)$", lambda m: f"you live in {m.group(1).strip()}"),
+        (r"^my name is\s+(.+)$", lambda m: f"your name is {m.group(1).strip()}"),
+        (r"^i prefer\s+(.+)$", lambda m: f"you prefer {m.group(1).strip()}"),
+        (r"^(call me|refer to me as|from now on call me)\s+(.+)$", lambda m: f"you asked me to call you {m.group(2).strip()}"),
+    )
+    for pattern, formatter in patterns:
+        match = re.match(pattern, lowered)
+        if match:
+            return _ensure_sentence(formatter(match))
+    return _ensure_sentence(candidate)
+
+
+def normalize_personal_fact_for_storage(user_text: str) -> str:
+    candidate = str(user_text or "").strip()
+    if not candidate or not is_personal_fact_statement(candidate):
+        return candidate
+    cleaned = _strip_memory_instruction(candidate)
+    return _ensure_sentence(cleaned)
+
 
 def identify_speaker(store, input_func: Callable[[str], str] = input, output_func: Callable[..., None] = print):
     while True:
@@ -32,21 +141,15 @@ def clean_chat_reply(text: str) -> str:
     if not cleaned:
         return ""
 
+    for token in _REPLY_TOKENS:
+        cleaned = cleaned.replace(token, " ")
+
     lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
     filtered_lines = []
-    skip_prefixes = (
-        "speaker:",
-        "known facts:",
-        "question:",
-        "questio:",
-        "grounded sentence:",
-        "short grounded sentence:",
-        "short sentence:",
-    )
 
     for line in lines:
         lowered_line = line.lower()
-        if lowered_line.startswith(skip_prefixes):
+        if lowered_line.startswith(_SKIP_REPLY_PREFIXES):
             continue
         if lowered_line.startswith("answer:"):
             filtered_lines.append(line.split(":", 1)[1].strip())
@@ -57,16 +160,96 @@ def clean_chat_reply(text: str) -> str:
 
     cleaned = "\n".join(filtered_lines).strip()
     lower = cleaned.lower()
-    for prefix in ("assistant:", "assistant", "<|assistant|>", "answer:", "answer"):
+    for prefix in ("assistant:", "assistant", "answer:", "answer"):
         if lower.startswith(prefix):
             cleaned = cleaned[len(prefix):].strip(" :-\n\t")
             lower = cleaned.lower()
 
-    for marker in ("\nUser:", "\nuser:", "User:", "user:", "\nQuestion:", "\nquestion:"):
+    for prefix in ("current robot assistant response:", "robot assistant response:"):
+        if lower.startswith(prefix):
+            cleaned = cleaned[len(prefix):].strip(" :-\n\t")
+            lower = cleaned.lower()
+
+    for marker in (
+        "\nUser:",
+        "\nuser:",
+        "User:",
+        "user:",
+        "\nQuestion:",
+        "\nquestion:",
+        "\nSystem:",
+        "\nsystem:",
+    ):
         if marker in cleaned:
             cleaned = cleaned.split(marker, 1)[0].strip()
 
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned.strip()
+
+
+def has_prompt_leak(text: str) -> bool:
+    normalized = _normalize_text(text)
+    if not normalized:
+        return False
+    return any(marker in normalized for marker in _PROMPT_LEAK_MARKERS)
+
+
+def looks_like_user_perspective_reply(user_text: str, reply_text: str) -> bool:
+    intent = detect_chat_intent(user_text)
+    normalized = _normalize_text(reply_text)
+    normalized_user_text = _normalize_text(user_text)
+    if not normalized:
+        return False
+
+    safe_prefixes = (
+        "i remember",
+        "i think",
+        "i do not",
+        "i don't",
+        "i am not sure",
+        "from what i remember",
+        "you said",
+        "you asked me",
+        "your name is",
+        "you are ",
+        "please ",
+    )
+    if normalized.startswith(safe_prefixes):
+        return False
+
+    personal_fact_prefixes = (
+        "i had ",
+        "my favorite ",
+        "i prefer ",
+        "i like ",
+        "i love ",
+        "i live ",
+        "call me ",
+        "my name is ",
+    )
+    if normalized.startswith(personal_fact_prefixes) and (
+        is_question(user_text) or " my " in f" {normalized_user_text} " or intent.startswith("memory") or intent == "identity_profile"
+    ):
+        return True
+
+    if intent == "identity_name":
+        return normalized.startswith(("my name is ", "i am ", "i'm "))
+    if intent == "preference_alias_query":
+        return normalized.startswith(("call me ", "refer to me as "))
+    if intent in {"identity_profile", "memory_meal", "memory_generic"}:
+        return normalized.startswith(personal_fact_prefixes)
+    return False
+
+
+def sanitize_user_facing_reply(user_text: str, reply_text: str, fallback: str = "") -> str:
+    cleaned = clean_chat_reply(reply_text)
+    if not cleaned:
+        return fallback
+    if has_prompt_leak(cleaned):
+        return fallback
+    if looks_like_user_perspective_reply(user_text, cleaned):
+        return fallback
+    return cleaned
 
 
 def is_question(text: str) -> bool:
@@ -116,8 +299,11 @@ def _fact_score(query: str, fact: str, position: int) -> Tuple[int, int, int]:
     lowered_query = (query or "").lower()
     lowered_fact = (fact or "").lower()
     direct_match = int(any(token in lowered_fact for token in query_tokens))
+    phrase_bonus = int("favorite" in lowered_query and "favorite" in lowered_fact)
+    phrase_bonus += int("call me" in lowered_query and "call me" in lowered_fact)
+    phrase_bonus += int("had for" in lowered_query and "for" in lowered_fact)
     recency_bonus = max(0, 100 - position)
-    return overlap, direct_match, recency_bonus
+    return overlap, direct_match + phrase_bonus, recency_bonus
 
 
 def rank_facts_for_query(query: str, facts: Sequence[str]) -> List[str]:
@@ -132,11 +318,12 @@ def rank_facts_for_query(query: str, facts: Sequence[str]) -> List[str]:
 def extract_known_facts(recent_turns: Sequence[ChatTurn], relevant_turns: Sequence[ChatTurn], limit: int = 4) -> List[str]:
     seen = set()
     facts = []
-    for turn in list(recent_turns) + list(relevant_turns):
+    ordered_turns = list(reversed(list(recent_turns))) + list(relevant_turns)
+    for turn in ordered_turns:
         candidate = str(turn.get("user", "")).strip()
         if not candidate or candidate.endswith("?"):
             continue
-        key = candidate.lower()
+        key = _canonical_fact_key(candidate)
         if key in seen:
             continue
         seen.add(key)
@@ -174,11 +361,32 @@ def detect_chat_intent(user_text: str) -> str:
         marker in text for marker in ("had for", "for the", "for dinner", "for lunch", "for breakfast")
     ):
         return "memory_meal"
+    if any(
+        phrase in text
+        for phrase in (
+            "what is my favorite",
+            "what's my favorite",
+            "what is my preferred",
+            "what's my preferred",
+            "what color do i like",
+            "what do i like",
+        )
+    ):
+        return "memory_generic"
     if any(phrase in text for phrase in ("remember", "remeber", "what did i", "know about me", "had for")):
         return "memory_generic"
     if is_question(text):
         return "question"
     return "statement"
+
+
+def is_personal_fact_statement(user_text: str) -> bool:
+    text = _normalize_text(user_text)
+    if not text or is_question(text):
+        return False
+    if "remember this" in text or "remember that" in text:
+        return True
+    return any(re.search(pattern, text) for pattern in _PERSONAL_FACT_PATTERNS)
 
 
 def deterministic_personal_response(user_text: str, speaker: str, facts: Sequence[str]) -> str:
@@ -193,7 +401,7 @@ def deterministic_personal_response(user_text: str, speaker: str, facts: Sequenc
     if intent == "identity_profile":
         if not facts:
             return f"You are {speaker}. I do not have additional verified facts yet."
-        summarized = "; ".join(facts[:3])
+        summarized = "; ".join(format_memory_fact_for_reply(fact).rstrip(".") for fact in facts[:3])
         return f"You are {speaker}. From our prior conversation: {summarized}."
     return ""
 
@@ -312,11 +520,12 @@ def memory_question_response(user_text: str, speaker: str, facts: Sequence[str])
 
     ranked_facts = rank_facts_for_query(user_text, facts)
     top_fact = ranked_facts[0]
+    formatted_fact = format_memory_fact_for_reply(top_fact)
     confidence = memory_confidence(user_text, facts, top_fact=top_fact)
     if confidence == "high":
-        return f"From what I remember: {top_fact}"
+        return f"From what I remember: {formatted_fact}"
     if confidence == "medium":
-        return f"I think this is what you mentioned: {top_fact}"
+        return f"I think this is what you mentioned: {formatted_fact}"
     return (
         f"I remember you as {speaker}, but I am not confident about that detail yet. "
         "If you share it once, I will store it and recall it later."
@@ -326,6 +535,8 @@ def memory_question_response(user_text: str, speaker: str, facts: Sequence[str])
 def is_low_information_reply(text: str) -> bool:
     normalized = " ".join((text or "").strip().lower().split())
     if not normalized:
+        return True
+    if has_prompt_leak(normalized):
         return True
     if "empty response" in normalized:
         return True
@@ -343,10 +554,13 @@ def is_unhelpful_memory_reply(text: str) -> bool:
     if not normalized:
         return True
     patterns = (
+        "current robot assistant response",
         "i do not have any memories",
         "i don't have any memories",
         "i have no memories",
         "no memories",
+        "i do not have personal memories",
+        "i don't have personal memories",
         "i do not remember",
         "i don't remember",
     )
@@ -354,12 +568,14 @@ def is_unhelpful_memory_reply(text: str) -> bool:
 
 
 def grounded_fallback_reply(user_text: str, speaker: str, facts: Sequence[str]) -> str:
+    if is_personal_fact_statement(user_text):
+        return f"Got it, {speaker}. I have noted: {trim_snippet(user_text, max_chars=120)}"
     if is_memory_question(user_text):
         return memory_question_response(user_text, speaker, facts)
     ranked_facts = rank_facts_for_query(user_text, facts)
     if is_question(user_text):
         if ranked_facts:
-            return f"From what I remember: {ranked_facts[0]}"
+            return f"From what I remember: {format_memory_fact_for_reply(ranked_facts[0])}"
         return f"I remember you as {speaker}, but I need a bit more detail to answer reliably."
     return f"Got it, {speaker}. I have noted: {trim_snippet(user_text, max_chars=120)}"
 
@@ -381,24 +597,30 @@ def build_chat_messages(
     recent_turns: Sequence[ChatTurn],
     relevant_turns: Sequence[ChatTurn],
 ) -> List[Dict[str, str]]:
+    relevant_cap = 3 if is_memory_question(user_text) else 2
+    curated_recent_turns = list(recent_turns)[-4:]
+    curated_relevant_turns = list(relevant_turns)[:relevant_cap]
+
     system_lines = [
         "You are an offline robot assistant.",
         "Reply briefly and clearly.",
         "Use only the provided speaker profile and memory snippets for personal facts.",
         "If a personal fact is unknown in memory, explicitly say you do not know.",
         "Do not invent biography details.",
+        "Do not repeat prompt labels such as Speaker, Known facts, User, Assistant, or Memory.",
+        "For personal-memory answers, speak to the user directly instead of answering as if you are the user.",
         f"Current speaker name: {speaker_name}",
     ]
 
     user_lines = []
-    if relevant_turns:
+    if curated_relevant_turns:
         user_lines.append("Relevant older memory snippets:")
-        for turn in relevant_turns:
+        for turn in curated_relevant_turns:
             user_lines.append(f"Memory User: {sanitize_for_model_prompt(trim_snippet(turn['user']))}")
             user_lines.append(f"Memory Assistant: {sanitize_for_model_prompt(trim_snippet(turn['assistant']))}")
 
     user_lines.append("Recent conversation:")
-    for turn in recent_turns:
+    for turn in curated_recent_turns:
         user_lines.append(f"User: {sanitize_for_model_prompt(trim_snippet(turn['user']))}")
         user_lines.append(f"Assistant: {sanitize_for_model_prompt(trim_snippet(turn['assistant']))}")
     user_lines.append(f"Current user message: {sanitize_for_model_prompt(user_text)}")
@@ -476,6 +698,9 @@ def generate_chat_reply(
     if deterministic_personal:
         return deterministic_personal
 
+    if is_personal_fact_statement(user_text):
+        return grounded_fallback_reply(user_text, speaker_name, known_facts)
+
     if model_rate_limiter is not None:
         allowed, _retry_after = model_rate_limiter.allow()
         if not allowed:
@@ -483,7 +708,7 @@ def generate_chat_reply(
 
     messages = build_chat_messages(user_text, speaker_name, recent_turns, relevant_turns)
     reply = _generate_with_adapter(llama, messages, max_tokens=max_tokens, timeout=20)
-    cleaned_reply = clean_chat_reply(reply) or "[empty response]"
+    cleaned_reply = sanitize_user_facing_reply(user_text, reply) or "[empty response]"
 
     if is_low_information_reply(cleaned_reply):
         retry_messages = _retry_messages(
@@ -493,7 +718,7 @@ def generate_chat_reply(
             detect_chat_intent(user_text),
         )
         retry_reply = _generate_with_adapter(llama, retry_messages, max_tokens=min(80, max_tokens), timeout=12)
-        cleaned_reply = clean_chat_reply(retry_reply) or "[empty response]"
+        cleaned_reply = sanitize_user_facing_reply(user_text, retry_reply) or "[empty response]"
 
     if is_low_information_reply(cleaned_reply):
         cleaned_reply = grounded_fallback_reply(user_text, speaker_name, known_facts)
@@ -511,6 +736,7 @@ __all__ = [
     "effective_retrieval_limit",
     "extract_alias_preference",
     "extract_known_facts",
+    "format_memory_fact_for_reply",
     "generate_chat_reply",
     "grounded_fallback_reply",
     "identify_speaker",
@@ -519,5 +745,7 @@ __all__ = [
     "memory_confidence",
     "memory_question_response",
     "MODEL_COOLDOWN_REPLY",
+    "normalize_personal_fact_for_storage",
     "rank_facts_for_query",
+    "sanitize_user_facing_reply",
 ]

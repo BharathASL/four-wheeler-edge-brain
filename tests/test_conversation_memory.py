@@ -83,3 +83,40 @@ def test_search_relevant_turns_dinner_memory_query(tmp_path):
 
     assert rows
     assert "dinner" in rows[0]["user"].lower()
+
+
+def test_search_relevant_turns_prefers_newer_matching_fact(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(user_id, "my favorite color is blue", "noted")
+    store.append_turn(user_id, "my favorite color is green", "updated")
+
+    rows = store.search_relevant_turns(
+        user_id=user_id,
+        query="favorite color",
+        limit=2,
+    )
+
+    assert rows
+    assert rows[0]["user"] == "my favorite color is green"
+
+
+def test_search_relevant_turns_is_scoped_to_each_user_across_sessions(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    alex_id, _ = store.get_or_create_user("alex")
+    sam_id, _ = store.get_or_create_user("sam")
+    store.append_turn(alex_id, "my favorite color is green", "updated")
+    store.append_turn(sam_id, "my favorite color is red", "noted")
+    store.append_turn(alex_id, "i had dosa for dinner", "nice")
+
+    alex_rows = store.search_relevant_turns(user_id=alex_id, query="favorite color", limit=2)
+    sam_rows = store.search_relevant_turns(user_id=sam_id, query="favorite color", limit=2)
+
+    assert alex_rows
+    assert sam_rows
+    assert all("green" in row["user"] or "dosa" in row["user"] for row in alex_rows)
+    assert all("red" in row["user"] for row in sam_rows)

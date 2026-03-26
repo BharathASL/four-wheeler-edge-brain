@@ -230,6 +230,7 @@ def chat_loop(
         effective_retrieval_limit,
         generate_chat_reply,
         identify_speaker,
+        normalize_personal_fact_for_storage,
     )
     from src.conversation_memory import ConversationMemoryStore, RetrievalBenchmarkRecorder
     from src.model_rate_limiter import ModelRateLimiter
@@ -292,7 +293,7 @@ def chat_loop(
                 )
                 print("assistant>", cleaned_reply)
                 if cleaned_reply != MODEL_COOLDOWN_REPLY:
-                    memory_store.append_turn(speaker_id, user, cleaned_reply)
+                    memory_store.append_turn(speaker_id, normalize_personal_fact_for_storage(user), cleaned_reply)
             except Exception as exc:
                 logger.exception("chat_generation_failed")
                 print(f"assistant> [error] {exc}")

@@ -282,7 +282,7 @@ class ConversationMemoryStore:
                     FROM conversation_turns_fts
                     WHERE user_id = ?
                       AND conversation_turns_fts MATCH ?
-                    ORDER BY bm25(conversation_turns_fts)
+                                        ORDER BY bm25(conversation_turns_fts), turn_id DESC
                     LIMIT ?
                     """,
                     (user_id, fts_query, limit),
@@ -306,7 +306,6 @@ class ConversationMemoryStore:
                     (user_id, pattern, pattern, limit),
                 ).fetchall()
 
-        rows = list(reversed(rows))
         return [{"user": str(row[0]), "assistant": str(row[1])} for row in rows]
 
 

@@ -6,6 +6,7 @@ minimal for Phase‑1 and suitable for unit testing with mocked adapters.
 """
 from typing import Dict, Any
 
+from src.chat_behavior import sanitize_user_facing_reply
 from src.input_sanitizer import sanitize_for_model_prompt
 from src.model_rate_limiter import ModelRateLimiter
 
@@ -87,13 +88,18 @@ class DecisionEngine:
                             "confirmation_required": True,
                         },
                     }
+                model_hint = sanitize_user_facing_reply(
+                    user_input,
+                    resp,
+                    fallback="I did not understand that command well enough to act safely.",
+                )
                 # Unknown command path: ask for confirmation and stay safe/idle.
                 return {
                     "action": "IDLE",
                     "params": {
                         "reason": "UNKNOWN_COMMAND",
                         "confirmation_required": True,
-                        "model_hint": resp.strip(),
+                        "model_hint": model_hint,
                     },
                 }
             except TimeoutError:
