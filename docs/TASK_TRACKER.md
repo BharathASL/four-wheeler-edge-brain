@@ -59,10 +59,14 @@ This file is the source of truth for planning and progress tracking in the repos
 | Define emergency stop behavior | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | ESTOP latch/reset implemented |
 | Implement STT failure degradation to deterministic safe behavior | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Speech input listener now degrades STT failures to safe IDLE behavior with test coverage |
 | Add end-to-end integration test (Input → Decision → Executor → State) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added synchronous loop coverage around the runtime command-processing path |
-| Add rate limiting / cooldown on model calls | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | None | Prevent model spam on rapid input; implement debounce or queue limit |
-| Define and enforce log rotation / log file size policy | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | None | Telemetry logs without rotation; add RotatingFileHandler or logrotate config |
-| Add input sanitization (guard against prompt injection) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | None | User input passed directly to model prompt; strip/escape dangerous patterns |
-| Add harness trend tracking (historical accuracy + regression alerts) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | AI eval harness complete | Persist baseline metrics; alert on accuracy regression across runs |
+| Refactor and harden chat behavior pipeline | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Chat behavior extracted to src/chat_behavior.py with deterministic routing, intent handling, and low-information fallback coverage |
+| Improve chat-memory ranking and confidence scoring | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | SQLite + FTS path now ranks facts by overlap/direct match/recency before answering memory questions |
+| Harden grounded personal-memory responses and prompt-leak cleanup | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Cleaned leaked retry scaffolding from outputs, added deterministic alias recall, and added transcript-based regression tests |
+| Expand chat-memory evaluation coverage for paraphrase recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Migration-gate fixtures now include paraphrased memory queries with category-level recall reporting for direct vs paraphrase retrieval |
+| Add rate limiting / cooldown on model calls | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Shared model cooldown guard now protects both command and chat paths and returns explicit cooldown responses instead of spamming model calls |
+| Define and enforce log rotation / log file size policy | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Telemetry now uses rotating file handlers by default with env-configurable size and retention policy |
+| Add input sanitization (guard against prompt injection) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Shared prompt-input sanitizer now neutralizes role markers and special tokens before decision/chat model calls while preserving deterministic routing and stored history |
+| Add harness trend tracking (historical accuracy + regression alerts) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | AI eval harness complete | AI evaluation harness now persists run history and surfaces regression alerts against previous runs |
 | Wire brain <-> robot command interface (keep ACTION contract) | Phase 2 - Mobility | 🟡 To do | P0 | Hardware integration | Interface should preserve action schema |
 | Implement physical movement system (forward/back/turn) | Phase 2 - Mobility | ⛔ Blocked (Hardware) | P0 | Motor hardware | Start after command interface is stable |
 | Implement src/motor_adapter.py stub (real + mock, following adapter pattern) | Phase 2 - Mobility | 🟡 To do | P0 | Motor HAT selection | Extend established adapter pattern; GPIO/PWM backend + mock for tests |
@@ -173,14 +177,14 @@ This file is the source of truth for planning and progress tracking in the repos
 1. 🟡 Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
 2. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
 3. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
-4. 🟡 Add rate limiting / cooldown on model calls (P1 — Phase 1.1).
-5. 🟡 Define and enforce log rotation / log file size policy (P1 — Phase 1.1).
-6. 🟡 Add input sanitization (guard against prompt injection) (P1 — Phase 1.1).
-7. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
-8. 🟡 Draft command-interface spec for brain <-> robot mobility bridge (P0 — Phase 2).
-9. 🟡 Validate migration-gate thresholds with retrieval benchmark data across long conversations (P1 — Phase 1.1).
-10. ⛔ Procure Raspberry Pi, motor HAT, microphone, speaker, camera, and docking components (P1 — Phase 0).
+4. 🟡 Define and enforce log rotation / log file size policy (P1 — Phase 1.1).
+5. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
+6. 🟡 Draft command-interface spec for brain <-> robot mobility bridge (P0 — Phase 2).
+7. 🟡 Validate migration-gate thresholds with retrieval benchmark data across long conversations (P1 — Phase 1.1).
+8. 🟡 Plan simulation → hardware transition (incremental PWM signal testing) (P1 — Phase 2).
+9. 🟡 Define movement calibration procedure (left/right balance, turn radius, deadband) (P1 — Phase 2).
+10. 🟡 Define GPIO/PWM duty cycle mapping and direction pin logic (P0 — Phase 2).
 
 ---
 
-Last updated: 2026-03-26 (Phase 1.1 reliability validation completed for failure-injection coverage, STT safe fallback, integration testing, and WSL bootstrap setup)
+Last updated: 2026-03-26 (Phase 1.1 chat behavior refactor, grounding cleanup, paraphrase evaluation, shared model cooldown, input sanitization, and log rotation implemented)

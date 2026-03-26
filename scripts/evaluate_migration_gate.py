@@ -72,10 +72,13 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     metrics: List[RetrievalMetrics] = []
     hits = 0
     results = []
+    category_totals: Dict[str, int] = {}
+    category_hits: Dict[str, int] = {}
 
     for q in query_set["queries"]:
         query = str(q["query"])
         expected_tokens = [str(t) for t in q.get("expect_any", [])]
+        category = str(q.get("category", "uncategorized"))
         rows = store.search_relevant_turns(
             user_id=user_id,
             query=query,
@@ -84,9 +87,12 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
         )
         matched = _contains_any_expected(rows, expected_tokens)
         hits += 1 if matched else 0
+        category_totals[category] = category_totals.get(category, 0) + 1
+        category_hits[category] = category_hits.get(category, 0) + (1 if matched else 0)
         results.append(
             {
                 "query": query,
+                "category": category,
                 "expected": expected_tokens,
                 "matched": matched,
                 "returned_count": len(rows),
@@ -100,6 +106,11 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     p95 = _percentile(latencies, 95)
     p99 = _percentile(latencies, 99)
     fts_ratio = (sum(1 for m in metrics if m.used_fts) / len(metrics)) if metrics else 0.0
+    recall_by_category = {
+        category: (category_hits.get(category, 0) / total_count)
+        for category, total_count in category_totals.items()
+        if total_count > 0
+    }
 
     threshold_pass = (
         recall_at_k >= args.min_recall_at_k
@@ -119,6 +130,7 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
         "metrics": {
             "query_count": total,
             "recall_at_k": recall_at_k,
+            "recall_by_category": recall_by_category,
             "latency_ms_p50": p50,
             "latency_ms_p95": p95,
             "latency_ms_p99": p99,

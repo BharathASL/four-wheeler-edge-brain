@@ -6,11 +6,20 @@ minimal for Phase‑1 and suitable for unit testing with mocked adapters.
 """
 from typing import Dict, Any
 
+from src.input_sanitizer import sanitize_for_model_prompt
+from src.model_rate_limiter import ModelRateLimiter
+
 
 class DecisionEngine:
-    def __init__(self, llama_adapter=None, model_timeout: float = 5.0):
+    def __init__(
+        self,
+        llama_adapter=None,
+        model_timeout: float = 5.0,
+        model_rate_limiter: ModelRateLimiter | None = None,
+    ):
         self.llama = llama_adapter
         self.model_timeout = model_timeout
+        self.model_rate_limiter = model_rate_limiter or ModelRateLimiter(0.0)
 
     def decide(self, user_input: str, state: Dict[str, Any]) -> Dict[str, Any]:
         """Return a structured ACTION dict.
@@ -56,7 +65,18 @@ class DecisionEngine:
 
         # Model fallback
         if self.llama is not None:
-            prompt = f"Decide action for input: {user_input}\nState: {state}\nReturn JSON with action and params."
+            allowed, retry_after = self.model_rate_limiter.allow()
+            if not allowed:
+                return {
+                    "action": "IDLE",
+                    "params": {
+                        "reason": "MODEL_COOLDOWN",
+                        "confirmation_required": True,
+                        "retry_after_s": round(retry_after, 2),
+                    },
+                }
+            safe_input = sanitize_for_model_prompt(user_input)
+            prompt = f"Decide action for input: {safe_input}\nState: {state}\nReturn JSON with action and params."
             try:
                 resp = self.llama.generate(prompt, max_tokens=128, timeout=self.model_timeout)
                 if not isinstance(resp, str) or not resp.strip():

@@ -24,23 +24,53 @@
   ],
   "queries": [
     {
+      "category": "direct",
       "query": "What drink do I like?",
       "expect_any": ["masala chai"]
     },
     {
+      "category": "direct",
       "query": "When do I work from home?",
       "expect_any": ["friday", "fridays"]
     },
     {
+      "category": "direct",
       "query": "What reminder did I set for Sunday?",
       "expect_any": ["call mom", "sunday evening"]
     },
     {
+      "category": "direct",
       "query": "How often should battery be swapped?",
       "expect_any": ["6 hours", "every 6 hours"]
     },
     {
+      "category": "direct",
       "query": "How should you answer by default?",
+      "expect_any": ["concise"]
+    },
+    {
+      "category": "paraphrase",
+      "query": "What chai do I prefer drinking?",
+      "expect_any": ["masala chai"]
+    },
+    {
+      "category": "paraphrase",
+      "query": "Which day is my work-from-home day?",
+      "expect_any": ["friday", "fridays"]
+    },
+    {
+      "category": "paraphrase",
+      "query": "What should I remember to do on Sunday evening?",
+      "expect_any": ["call mom", "sunday evening"]
+    },
+    {
+      "category": "paraphrase",
+      "query": "What is the battery swap cadence?",
+      "expect_any": ["6 hours", "every 6 hours"]
+    },
+    {
+      "category": "paraphrase",
+      "query": "Are your replies brief by default?",
       "expect_any": ["concise"]
     }
   ]

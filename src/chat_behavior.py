@@ -1,0 +1,518 @@
+"""Chat behavior helpers for the interactive chat loop."""
+
+from __future__ import annotations
+
+import re
+from typing import Callable, Dict, List, Sequence, Tuple
+
+from src.input_sanitizer import sanitize_for_model_prompt
+from src.model_rate_limiter import ModelRateLimiter
+
+
+ChatTurn = Dict[str, str]
+MODEL_COOLDOWN_REPLY = "Please wait a moment before asking another model-heavy question."
+
+
+def identify_speaker(store, input_func: Callable[[str], str] = input, output_func: Callable[..., None] = print):
+    while True:
+        speaker_name = input_func("speaker> Who is speaking? ").strip()
+        if not speaker_name:
+            output_func("Please enter a non-empty speaker name")
+            continue
+        speaker_id, is_new = store.get_or_create_user(speaker_name)
+        if is_new:
+            output_func(f"New speaker profile created for: {speaker_name}")
+        else:
+            output_func(f"Welcome back: {speaker_name}")
+        return speaker_id, speaker_name
+
+
+def clean_chat_reply(text: str) -> str:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return ""
+
+    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    filtered_lines = []
+    skip_prefixes = (
+        "speaker:",
+        "known facts:",
+        "question:",
+        "questio:",
+        "grounded sentence:",
+        "short grounded sentence:",
+        "short sentence:",
+    )
+
+    for line in lines:
+        lowered_line = line.lower()
+        if lowered_line.startswith(skip_prefixes):
+            continue
+        if lowered_line.startswith("answer:"):
+            filtered_lines.append(line.split(":", 1)[1].strip())
+            continue
+        if lowered_line in {"assistant", "assistant:", "answer", "answer:"}:
+            continue
+        filtered_lines.append(line)
+
+    cleaned = "\n".join(filtered_lines).strip()
+    lower = cleaned.lower()
+    for prefix in ("assistant:", "assistant", "<|assistant|>", "answer:", "answer"):
+        if lower.startswith(prefix):
+            cleaned = cleaned[len(prefix):].strip(" :-\n\t")
+            lower = cleaned.lower()
+
+    for marker in ("\nUser:", "\nuser:", "User:", "user:", "\nQuestion:", "\nquestion:"):
+        if marker in cleaned:
+            cleaned = cleaned.split(marker, 1)[0].strip()
+
+    return cleaned.strip()
+
+
+def is_question(text: str) -> bool:
+    lowered = (text or "").strip().lower()
+    if not lowered:
+        return False
+    if lowered.endswith("?"):
+        return True
+    return lowered.startswith(("what", "why", "how", "when", "where", "who", "do", "did", "are", "can"))
+
+
+def trim_snippet(text: str, max_chars: int = 140) -> str:
+    compact = " ".join((text or "").split())
+    if len(compact) <= max_chars:
+        return compact
+    return compact[: max_chars - 3] + "..."
+
+
+def _token_set(text: str):
+    cleaned = []
+    for ch in (text or "").lower():
+        cleaned.append(ch if ch.isalnum() or ch.isspace() else " ")
+    words = [word for word in "".join(cleaned).split() if len(word) >= 3]
+    stop = {
+        "what",
+        "when",
+        "where",
+        "which",
+        "this",
+        "that",
+        "have",
+        "with",
+        "from",
+        "your",
+        "about",
+        "remember",
+        "remeber",
+        "know",
+    }
+    return {word for word in words if word not in stop}
+
+
+def _fact_score(query: str, fact: str, position: int) -> Tuple[int, int, int]:
+    query_tokens = _token_set(query)
+    fact_tokens = _token_set(fact)
+    overlap = len(query_tokens.intersection(fact_tokens))
+    lowered_query = (query or "").lower()
+    lowered_fact = (fact or "").lower()
+    direct_match = int(any(token in lowered_fact for token in query_tokens))
+    recency_bonus = max(0, 100 - position)
+    return overlap, direct_match, recency_bonus
+
+
+def rank_facts_for_query(query: str, facts: Sequence[str]) -> List[str]:
+    ranked = sorted(
+        enumerate(facts),
+        key=lambda item: _fact_score(query, item[1], item[0]),
+        reverse=True,
+    )
+    return [item[1] for item in ranked]
+
+
+def extract_known_facts(recent_turns: Sequence[ChatTurn], relevant_turns: Sequence[ChatTurn], limit: int = 4) -> List[str]:
+    seen = set()
+    facts = []
+    for turn in list(recent_turns) + list(relevant_turns):
+        candidate = str(turn.get("user", "")).strip()
+        if not candidate or candidate.endswith("?"):
+            continue
+        key = candidate.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        facts.append(trim_snippet(candidate, max_chars=100))
+        if len(facts) >= limit:
+            break
+    return facts
+
+
+def detect_chat_intent(user_text: str) -> str:
+    text = (user_text or "").strip().lower()
+    if not text:
+        return "empty"
+    if any(phrase in text for phrase in ("call me ", "refer to me as ", "from now on call me ")):
+        return "preference_alias_set"
+    if any(
+        phrase in text for phrase in ("what did i ask you to call me", "what should you call me", "what do you call me")
+    ):
+        return "preference_alias_query"
+    if any(phrase in text for phrase in ("my name", "who am i", "who i am", "tell my name")):
+        return "identity_name"
+    if any(
+        phrase in text
+        for phrase in (
+            "what do you know about me",
+            "know about me",
+            "met before",
+            "have we met",
+            "remember me",
+            "remeber me",
+        )
+    ):
+        return "identity_profile"
+    if any(meal in text for meal in ("dinner", "lunch", "breakfast")) and any(
+        marker in text for marker in ("had for", "for the", "for dinner", "for lunch", "for breakfast")
+    ):
+        return "memory_meal"
+    if any(phrase in text for phrase in ("remember", "remeber", "what did i", "know about me", "had for")):
+        return "memory_generic"
+    if is_question(text):
+        return "question"
+    return "statement"
+
+
+def deterministic_personal_response(user_text: str, speaker: str, facts: Sequence[str]) -> str:
+    intent = detect_chat_intent(user_text)
+    if intent == "identity_name":
+        return f"Your name is {speaker}."
+    if intent == "preference_alias_query":
+        alias = extract_alias_preference(facts)
+        if alias:
+            return f"You asked me to call you {alias}."
+        return f"I remember you as {speaker}, but I do not have a saved preferred name yet."
+    if intent == "identity_profile":
+        if not facts:
+            return f"You are {speaker}. I do not have additional verified facts yet."
+        summarized = "; ".join(facts[:3])
+        return f"You are {speaker}. From our prior conversation: {summarized}."
+    return ""
+
+
+def extract_meal_fact(turn_texts: Sequence[str], meal_name: str) -> str:
+    patterns = (
+        rf"\bi\s+had\s+(.+?)\s+for\s+{meal_name}\b",
+        rf"\bhad\s+(.+?)\s+for\s+{meal_name}\b",
+        rf"\bfor\s+{meal_name}\s+i\s+had\s+(.+?)\b",
+    )
+
+    for text in reversed(list(turn_texts)):
+        candidate = " ".join(str(text or "").strip().split())
+        if not candidate:
+            continue
+        lowered = candidate.lower()
+        for pattern in patterns:
+            match = re.search(pattern, lowered)
+            if not match:
+                continue
+            meal_value = match.group(1).strip(" .,!?:;-")
+            if meal_value:
+                return meal_value
+    return ""
+
+
+def deterministic_meal_memory_response(
+    user_text: str,
+    speaker: str,
+    recent_turns: Sequence[ChatTurn],
+    relevant_turns: Sequence[ChatTurn],
+) -> str:
+    if detect_chat_intent(user_text) != "memory_meal":
+        return ""
+
+    lowered = (user_text or "").lower()
+    asked_meal = ""
+    for meal in ("dinner", "lunch", "breakfast"):
+        if meal in lowered:
+            asked_meal = meal
+            break
+    if not asked_meal:
+        return ""
+
+    turn_texts = [turn.get("user", "") for turn in list(recent_turns) + list(relevant_turns)]
+    meal_fact = extract_meal_fact(turn_texts, asked_meal)
+    if meal_fact:
+        return f"You said you had {meal_fact} for {asked_meal}."
+
+    return (
+        f"I remember you as {speaker}, but I do not have your {asked_meal} detail saved yet. "
+        "Tell me once and I will remember it for next time."
+    )
+
+
+def is_memory_question(user_text: str) -> bool:
+    return detect_chat_intent(user_text) in {
+        "identity_profile",
+        "memory_meal",
+        "memory_generic",
+        "preference_alias_query",
+    }
+
+
+def extract_alias_preference(facts: Sequence[str]) -> str:
+    patterns = (
+        r"\bcall me\s+(.+?)(?:\s+from now on)?[\.!]?$",
+        r"\brefer to me as\s+(.+?)[\.!]?$",
+        r"\bfrom now on call me\s+(.+?)[\.!]?$",
+    )
+    for fact in reversed(list(facts)):
+        lowered = str(fact or "").strip().lower()
+        for pattern in patterns:
+            match = re.search(pattern, lowered)
+            if match:
+                alias = match.group(1).strip(" \"'.,!?:;-")
+                if alias:
+                    return alias
+    return ""
+
+
+def memory_confidence(user_text: str, facts: Sequence[str]) -> str:
+    if not facts:
+        return "low"
+    ranked_facts = rank_facts_for_query(user_text, facts)
+    query_tokens = _token_set(user_text)
+    if not query_tokens:
+        return "medium"
+
+    top_tokens = _token_set(ranked_facts[0])
+    best_overlap = len(query_tokens.intersection(top_tokens))
+    if best_overlap >= 2:
+        return "high"
+    if best_overlap == 1:
+        return "medium"
+    return "low"
+
+
+def memory_question_response(user_text: str, speaker: str, facts: Sequence[str]) -> str:
+    if detect_chat_intent(user_text) == "preference_alias_query":
+        alias = extract_alias_preference(facts)
+        if alias:
+            return f"You asked me to call you {alias}."
+        return f"I remember you as {speaker}, but I do not have a saved preferred name yet."
+
+    if not facts:
+        return (
+            f"I remember you as {speaker}, but I do not have that detail saved yet. "
+            "Tell me once and I will remember it for next time."
+        )
+
+    ranked_facts = rank_facts_for_query(user_text, facts)
+    confidence = memory_confidence(user_text, ranked_facts)
+    top_fact = ranked_facts[0]
+    if confidence == "high":
+        return f"From what I remember: {top_fact}"
+    if confidence == "medium":
+        return f"I think this is what you mentioned: {top_fact}"
+    return (
+        f"I remember you as {speaker}, but I am not confident about that detail yet. "
+        "If you share it once, I will store it and recall it later."
+    )
+
+
+def is_low_information_reply(text: str) -> bool:
+    normalized = " ".join((text or "").strip().lower().split())
+    if not normalized:
+        return True
+    if "empty response" in normalized:
+        return True
+    if normalized.startswith(("assist", "assistant", "<|assistant|>")):
+        return True
+    if normalized in {"memory", "ok", "okay", "noted", "i see", "yes", "no"}:
+        return True
+    if len(normalized.split()) <= 2 and len(normalized) <= 14:
+        return True
+    return False
+
+
+def is_unhelpful_memory_reply(text: str) -> bool:
+    normalized = " ".join((text or "").strip().lower().split())
+    if not normalized:
+        return True
+    patterns = (
+        "i do not have any memories",
+        "i don't have any memories",
+        "i have no memories",
+        "no memories",
+        "i do not remember",
+        "i don't remember",
+    )
+    return any(pattern in normalized for pattern in patterns)
+
+
+def grounded_fallback_reply(user_text: str, speaker: str, facts: Sequence[str]) -> str:
+    ranked_facts = rank_facts_for_query(user_text, facts)
+    if is_memory_question(user_text):
+        return memory_question_response(user_text, speaker, ranked_facts)
+    if is_question(user_text):
+        if ranked_facts:
+            return f"From what I remember: {ranked_facts[0]}"
+        return f"I remember you as {speaker}, but I need a bit more detail to answer reliably."
+    return f"Got it, {speaker}. I have noted: {trim_snippet(user_text, max_chars=120)}"
+
+
+def effective_retrieval_limit(user_text: str, retrieval_turns: int) -> int:
+    if is_memory_question(user_text):
+        return max(retrieval_turns, 3)
+    return retrieval_turns
+
+
+def dedupe_relevant_turns(recent_turns: Sequence[ChatTurn], relevant_turns: Sequence[ChatTurn]) -> List[ChatTurn]:
+    recent_pairs = {(turn["user"], turn["assistant"]) for turn in recent_turns}
+    return [turn for turn in relevant_turns if (turn["user"], turn["assistant"]) not in recent_pairs]
+
+
+def build_chat_messages(
+    user_text: str,
+    speaker_name: str,
+    recent_turns: Sequence[ChatTurn],
+    relevant_turns: Sequence[ChatTurn],
+) -> List[Dict[str, str]]:
+    system_lines = [
+        "You are an offline robot assistant.",
+        "Reply briefly and clearly.",
+        "Use only the provided speaker profile and memory snippets for personal facts.",
+        "If a personal fact is unknown in memory, explicitly say you do not know.",
+        "Do not invent biography details.",
+        f"Current speaker name: {speaker_name}",
+    ]
+
+    user_lines = []
+    if relevant_turns:
+        user_lines.append("Relevant older memory snippets:")
+        for turn in relevant_turns:
+            user_lines.append(f"Memory User: {sanitize_for_model_prompt(trim_snippet(turn['user']))}")
+            user_lines.append(f"Memory Assistant: {sanitize_for_model_prompt(trim_snippet(turn['assistant']))}")
+
+    user_lines.append("Recent conversation:")
+    for turn in recent_turns:
+        user_lines.append(f"User: {sanitize_for_model_prompt(trim_snippet(turn['user']))}")
+        user_lines.append(f"Assistant: {sanitize_for_model_prompt(trim_snippet(turn['assistant']))}")
+    user_lines.append(f"Current user message: {sanitize_for_model_prompt(user_text)}")
+
+    return [
+        {"role": "system", "content": "\n".join(system_lines)},
+        {"role": "user", "content": "\n".join(user_lines)},
+    ]
+
+
+def _retry_messages(user_text: str, speaker_name: str, known_facts: Sequence[str], intent: str) -> List[Dict[str, str]]:
+    intent_hint = {
+        "identity_name": "Answer the speaker identity question directly.",
+        "identity_profile": "Answer only from known speaker facts.",
+        "memory_meal": "Answer only with the stored meal detail if present.",
+        "memory_generic": "Answer only from remembered facts and say when uncertain.",
+    }.get(intent, "Answer in one short grounded sentence.")
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are an offline robot assistant. "
+                "Answer in one short sentence. "
+                "Use only provided memory facts for personal questions. "
+                + intent_hint
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Speaker: {speaker_name}\n"
+                f"Known facts: {sanitize_for_model_prompt('; '.join(known_facts[:2]) if known_facts else 'none')}\n"
+                f"Question: {sanitize_for_model_prompt(user_text)}"
+            ),
+        },
+    ]
+
+
+def _generate_with_adapter(llama, messages: Sequence[Dict[str, str]], max_tokens: int, timeout: int) -> str:
+    if hasattr(llama, "generate_chat"):
+        return llama.generate_chat(list(messages), max_tokens=max_tokens, timeout=timeout)
+
+    prompt = (
+        "System:\n"
+        + str(messages[0]["content"])
+        + "\n\nUser:\n"
+        + str(messages[1]["content"])
+        + "\nAssistant:"
+    )
+    return llama.generate(prompt, max_tokens=max_tokens, timeout=timeout)
+
+
+def generate_chat_reply(
+    llama,
+    user_text: str,
+    speaker_name: str,
+    recent_turns: Sequence[ChatTurn],
+    relevant_turns: Sequence[ChatTurn],
+    max_tokens: int = 128,
+    model_rate_limiter: ModelRateLimiter | None = None,
+) -> str:
+    known_facts = extract_known_facts(recent_turns, relevant_turns)
+
+    deterministic_meal = deterministic_meal_memory_response(
+        user_text,
+        speaker_name,
+        recent_turns,
+        relevant_turns,
+    )
+    if deterministic_meal:
+        return deterministic_meal
+
+    deterministic_personal = deterministic_personal_response(user_text, speaker_name, known_facts)
+    if deterministic_personal:
+        return deterministic_personal
+
+    if model_rate_limiter is not None:
+        allowed, _retry_after = model_rate_limiter.allow()
+        if not allowed:
+            return MODEL_COOLDOWN_REPLY
+
+    messages = build_chat_messages(user_text, speaker_name, recent_turns, relevant_turns)
+    reply = _generate_with_adapter(llama, messages, max_tokens=max_tokens, timeout=20)
+    cleaned_reply = clean_chat_reply(reply) or "[empty response]"
+
+    if is_low_information_reply(cleaned_reply):
+        retry_messages = _retry_messages(
+            user_text,
+            speaker_name,
+            known_facts,
+            detect_chat_intent(user_text),
+        )
+        retry_reply = _generate_with_adapter(llama, retry_messages, max_tokens=min(80, max_tokens), timeout=12)
+        cleaned_reply = clean_chat_reply(retry_reply) or "[empty response]"
+
+    if is_low_information_reply(cleaned_reply):
+        cleaned_reply = grounded_fallback_reply(user_text, speaker_name, known_facts)
+
+    if is_memory_question(user_text) and is_unhelpful_memory_reply(cleaned_reply):
+        cleaned_reply = memory_question_response(user_text, speaker_name, known_facts)
+
+    return cleaned_reply
+
+
+__all__ = [
+    "clean_chat_reply",
+    "dedupe_relevant_turns",
+    "detect_chat_intent",
+    "effective_retrieval_limit",
+    "extract_alias_preference",
+    "extract_known_facts",
+    "generate_chat_reply",
+    "grounded_fallback_reply",
+    "identify_speaker",
+    "is_low_information_reply",
+    "is_memory_question",
+    "memory_confidence",
+    "memory_question_response",
+    "MODEL_COOLDOWN_REPLY",
+    "rank_facts_for_query",
+]

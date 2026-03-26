@@ -7,7 +7,10 @@ __all__ = [
     "llama_adapter",
     "audio_adapter",
     "camera_adapter",
+    "chat_behavior",
     "decision_engine",
+    "input_sanitizer",
+    "model_rate_limiter",
     "state_manager",
     "action_executor",
 ]
