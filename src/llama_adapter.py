@@ -6,6 +6,7 @@ on the native runtime during unit tests.
 """
 from typing import Optional
 import concurrent.futures
+import os
 import threading
 import time
 
@@ -34,6 +35,9 @@ class LlamaAdapter:
         try:
             with self._llm_lock:
                 if self._llm is None:
+                    if self.lib_path:
+                        # Hint llama-cpp-python to load a specific shared library.
+                        os.environ["LLAMA_CPP_LIB"] = self.lib_path
                     from llama_cpp import Llama  # type: ignore
                     self._llm = Llama(model_path=model_path)
         except Exception:
@@ -123,7 +127,8 @@ class MockLlamaAdapter(LlamaAdapter):
     """Simple mock that returns deterministic responses for unit tests."""
 
     def load_model(self, model_path: str):
-        super().load_model(model_path)
+        self.model = model_path
+        self._llm = None
 
     def generate(self, prompt: str, max_tokens: int = 128, timeout: Optional[float] = None) -> str:
         # Return a short deterministic reply useful for unit tests.
