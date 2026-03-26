@@ -10,7 +10,10 @@ Purpose
 
 Environments
 - Development: Windows (primary development environment). Use a Python virtual environment and the repository `requirements.txt` for all Python dependencies.
-- Production target: Raspberry Pi 5 (recommend 8GB). Code must support both environments at all times.
+- Production targets:
+    - Phase 1: Raspberry Pi 4 (4GB).
+    - Later phases: Raspberry Pi 5 (8GB recommended), while keeping portability across supported Pi models.
+- Code must support both development and production environments at all times.
 
 Principles
 - Environment parity: keep `requirements.txt` identical for dev and prod where possible. Native components (compiled libraries) will differ and must be built on the target platform.

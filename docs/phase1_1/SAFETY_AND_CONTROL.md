@@ -36,7 +36,6 @@ Clamp rules:
 
 1. If desired speed exceeds max, reduce to max.
 2. If proximity is below minimum, block forward movement and return `STOP`.
-3. If proximity is near threshold, reduce speed to crawl mode.
 
 ## 3) Watchdog Timer Policy
 

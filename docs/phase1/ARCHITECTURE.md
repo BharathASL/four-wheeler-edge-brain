@@ -45,7 +45,7 @@ Adapter contracts are intentionally small so production and mock backends remain
 
 - Decision output schema
   - `{ "action": str, "params": dict }`
-  - Core actions: `STOP`, `DOCK`, `MODEL_SUGGESTION`, `NO_OP`
+  - Core actions: `STOP`, `DOCK`, `MODEL_SUGGESTION`, `IDLE`
 
 - Executor result schema
   - `{ "status": str, "info": any }`

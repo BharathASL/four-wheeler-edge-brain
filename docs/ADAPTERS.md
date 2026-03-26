@@ -79,9 +79,9 @@ Known action values:
 - STOP
 - DOCK
 - MODEL_SUGGESTION
-- NO_OP
+- IDLE
 
-Known NO_OP reasons:
+Known IDLE reasons:
 
 - MODEL_TIMEOUT
 - MODEL_UNAVAILABLE
