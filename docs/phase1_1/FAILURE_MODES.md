@@ -60,7 +60,8 @@ Policy:
 {
   "action": "IDLE",
   "params": {
-    "reason": "MODEL_UNAVAILABLE"
+    "reason": "MODEL_UNAVAILABLE",
+    "confirmation_required": true
   }
 }
 ```

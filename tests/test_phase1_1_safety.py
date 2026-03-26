@@ -56,7 +56,7 @@ def test_manual_override_blocks_model_suggestions():
     assert "manual-override" in result["info"]
 
 
-def test_watchdog_triggers_stop_action():
+def test_watchdog_triggers_stop_action(poll):
     state = StateManager()
     # Simulate stale heartbeat before starting watchdog.
     state.set("last_command_ts", time.time() - 10.0)
@@ -72,9 +72,11 @@ def test_watchdog_triggers_stop_action():
         tick_seconds=0.01,
     )
     task.start()
-    time.sleep(0.08)
-    task.stop()
+    try:
+        triggered = poll(lambda: len(seen) > 0)
+    finally:
+        task.stop()
 
-    assert seen
+    assert triggered, "watchdog callback should have fired"
     assert seen[0]["action"] == "STOP"
     assert seen[0]["params"].get("source") == "watchdog"
