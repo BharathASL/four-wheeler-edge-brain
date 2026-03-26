@@ -1,6 +1,6 @@
 {
-  "dataset": "/mnt/d/Projects/four-wheeler-robot/scripts/migration_gate_query_set.json",
-  "db_path": "/mnt/d/Projects/four-wheeler-robot/data/migration_gate_eval.sqlite",
+  "dataset": "scripts/migration_gate_query_set.json",
+  "db_path": "data/migration_gate_eval.sqlite",
   "k": 4,
   "thresholds": {
     "min_recall_at_k": 0.8,

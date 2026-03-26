@@ -18,8 +18,8 @@ class ModelRateLimiter:
         if self.cooldown_seconds <= 0:
             return True, 0.0
 
-        now = self._time_fn()
         with self._lock:
+            now = self._time_fn()
             elapsed = now - self._last_model_call_ts
             if self._last_model_call_ts > 0.0 and elapsed < self.cooldown_seconds:
                 return False, max(0.0, self.cooldown_seconds - elapsed)
