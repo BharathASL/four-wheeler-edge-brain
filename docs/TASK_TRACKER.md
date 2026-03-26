@@ -74,23 +74,23 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add retrieval benchmark hooks for migration-gate metrics | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Latency and retrieval-hit hooks added for recall benchmarking |
 | Define objective migration gate (latency + recall metrics) for FAISS adoption | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Evaluator script records recall@k and latency percentiles with threshold decision |
 | Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Migration gate complete | Keep metadata/filtering in SQLite; use FAISS for semantic nearest-neighbor |
-| Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P0 | None | Prepare quality testing before Pi arrives |
+| Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added evaluator script with thresholded pass/fail and JSON report |
 | Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P0 | None | Improves reliability confidence |
 | Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P2 | Migration gate complete | Consider once conversation volume grows beyond simple SQLite recall |
 | Run Pi bring-up validation and record latency/memory/temperature metrics | Phase 1.1 - Reliability & Safety Hardening | ⛔ Blocked (Hardware) | P0 | Raspberry Pi hardware | Use existing runbook and script |
 
 ## Top 10 Next Actions
 
-1. 🟡 Build AI evaluation harness for action-quality checks.
-2. 🟡 Add failure-injection tests for model timeout/unavailable/malformed outputs.
-3. 🟡 Validate migration-gate thresholds with retrieval benchmark data across long conversations.
-4. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU).
-5. 🟡 Decide and document vision detector baseline and performance targets.
-6. 🟡 Draft command-interface spec for brain <-> robot mobility bridge.
-7. 🟡 Procure Raspberry Pi target compute and docking components.
-8. 🟡 Procure microphone, speaker, and camera for hardware integration.
-9. ⛔ Run Pi validation script and record baseline runtime metrics once hardware arrives.
-10. 🟡 Draft FAISS hybrid migration plan once gate thresholds fail consistently.
+1. 🟡 Add failure-injection tests for model timeout/unavailable/malformed outputs.
+2. 🟡 Validate migration-gate thresholds with retrieval benchmark data across long conversations.
+3. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU).
+4. 🟡 Decide and document vision detector baseline and performance targets.
+5. 🟡 Draft command-interface spec for brain <-> robot mobility bridge.
+6. 🟡 Procure Raspberry Pi target compute and docking components.
+7. 🟡 Procure microphone, speaker, and camera for hardware integration.
+8. ⛔ Run Pi validation script and record baseline runtime metrics once hardware arrives.
+9. 🟡 Draft FAISS hybrid migration plan once gate thresholds fail consistently.
+10. 🟡 Add harness trend tracking (historical accuracy and regression alerts).
 
 ---
 

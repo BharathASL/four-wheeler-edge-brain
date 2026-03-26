@@ -103,6 +103,14 @@ python scripts/evaluate_migration_gate.py --output-json data/migration_gate_repo
 
 The evaluator exits with code 0 when thresholds pass and 2 when thresholds fail.
 
+Run AI action evaluation harness (prompt set + expected action classes):
+
+```bash
+python scripts/evaluate_ai_harness.py --output-json data/ai_eval_report.json
+```
+
+The harness exits with code 0 when accuracy threshold passes and 2 when it fails.
+
 Optional: override memory database location:
 
 ```bash

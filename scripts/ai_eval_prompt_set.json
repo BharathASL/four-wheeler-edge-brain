@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "name": "phase1_action_eval",
+    "version": 1,
+    "description": "Prompt set for action-class quality checks"
+  },
+  "cases": [
+    {"input": "Please stop now", "expected_action": "STOP"},
+    {"input": "Emergency stop immediately", "expected_action": "ESTOP"},
+    {"input": "reset estop", "expected_action": "RESET_ESTOP"},
+    {"input": "Go dock and charge", "expected_action": "DOCK"},
+    {"input": "Move forward slowly", "expected_action": "MOVE"},
+    {"input": "Turn left", "expected_action": "MOVE"},
+    {"input": "Turn right", "expected_action": "MOVE"},
+    {"input": "Back up a little", "expected_action": "MOVE"},
+    {"input": "Override on", "expected_action": "OVERRIDE_ON"},
+    {"input": "Override off", "expected_action": "OVERRIDE_OFF"},
+    {"input": "How are you doing", "expected_action": "IDLE"},
+    {"input": "", "expected_action": "IDLE"}
+  ]
+}
