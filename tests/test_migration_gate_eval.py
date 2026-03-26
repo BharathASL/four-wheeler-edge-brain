@@ -38,6 +38,8 @@ def test_run_evaluation_reports_category_recall(tmp_path):
         query_set=str(query_set_path),
         db_path=str(db_path),
         k=4,
+        retrieval_mode="fts",
+        semantic_backend="auto",
         min_recall_at_k=0.80,
         max_p95_ms=20.0,
         max_p99_ms=30.0,
@@ -47,6 +49,7 @@ def test_run_evaluation_reports_category_recall(tmp_path):
     report = run_evaluation(args)
 
     assert report["metrics"]["recall_at_k"] == 1.0
+    assert report["retrieval_mode"] == "fts"
     assert report["metrics"]["recall_by_category"] == {
         "direct": 1.0,
         "paraphrase": 1.0,

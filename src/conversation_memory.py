@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
+from src.semantic_memory import SemanticMemoryIndex
+
 
 def _query_tokens(query: str) -> List[str]:
     cleaned = []
@@ -94,12 +96,20 @@ class RetrievalBenchmarkRecorder:
 class ConversationMemoryStore:
     """Persist users and chat turns so context can survive process restarts."""
 
-    def __init__(self, db_path: str = "data/conversations.sqlite"):
+    def __init__(
+        self,
+        db_path: str = "data/conversations.sqlite",
+        semantic_index: Optional[SemanticMemoryIndex] = None,
+        default_retrieval_mode: str = "fts",
+    ):
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         self._fts_enabled = False
+        self._semantic_index = semantic_index
+        self._default_retrieval_mode = self._normalize_retrieval_mode(default_retrieval_mode)
         self._initialize()
+        self._backfill_semantic_index()
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(str(self._db_path))
@@ -206,6 +216,14 @@ class ConversationMemoryStore:
                     )
                 conn.commit()
 
+        if self._semantic_index is not None:
+            self._semantic_index.add_turn(
+                turn_id=int(cursor.lastrowid),
+                user_id=user_id,
+                user_text=user_text,
+                assistant_text=assistant_text,
+            )
+
     def get_recent_turns(self, user_id: int, limit: int = 6) -> List[Dict[str, str]]:
         if limit <= 0:
             return []
@@ -238,6 +256,7 @@ class ConversationMemoryStore:
         query: str,
         limit: int = 4,
         metrics_hook: Optional[Callable[[RetrievalMetrics], None]] = None,
+        retrieval_mode: Optional[str] = None,
     ) -> List[Dict[str, str]]:
         if limit <= 0:
             return []
@@ -247,7 +266,17 @@ class ConversationMemoryStore:
             return []
 
         start = time.perf_counter()
-        if self._fts_enabled:
+        mode = self._normalize_retrieval_mode(retrieval_mode or self._default_retrieval_mode)
+        if mode == "semantic":
+            rows = self._search_relevant_turns_semantic(user_id=user_id, query=normalized_query, limit=limit)
+            used_fts = False
+        elif mode == "hybrid":
+            rows, used_fts = self._search_relevant_turns_hybrid(
+                user_id=user_id,
+                query=normalized_query,
+                limit=limit,
+            )
+        elif self._fts_enabled:
             rows = self._search_relevant_turns_fts(user_id=user_id, query=normalized_query, limit=limit)
             used_fts = True
         else:
@@ -266,6 +295,52 @@ class ConversationMemoryStore:
             )
 
         return rows
+
+    def _normalize_retrieval_mode(self, retrieval_mode: Optional[str]) -> str:
+        mode = (retrieval_mode or "fts").strip().lower()
+        if mode in {"fts", "semantic", "hybrid"}:
+            return mode
+        return "fts"
+
+    def _backfill_semantic_index(self) -> None:
+        if self._semantic_index is None:
+            return
+
+        with self._lock:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT id, user_id, user_text, assistant_text
+                    FROM conversation_turns
+                    ORDER BY id ASC
+                    """
+                ).fetchall()
+
+        for row in rows:
+            self._semantic_index.add_turn(
+                turn_id=int(row[0]),
+                user_id=int(row[1]),
+                user_text=str(row[2]),
+                assistant_text=str(row[3]),
+            )
+
+    def _search_relevant_turns_semantic(self, user_id: int, query: str, limit: int) -> List[Dict[str, str]]:
+        if self._semantic_index is None:
+            return []
+
+        matches = self._semantic_index.search(query=query, user_id=user_id, limit=limit)
+        return [
+            {"user": match.user_text, "assistant": match.assistant_text}
+            for match in matches
+        ]
+
+    def _search_relevant_turns_hybrid(self, user_id: int, query: str, limit: int) -> Tuple[List[Dict[str, str]], bool]:
+        semantic_rows = self._search_relevant_turns_semantic(user_id=user_id, query=query, limit=limit)
+        if semantic_rows:
+            return semantic_rows, False
+        if self._fts_enabled:
+            return self._search_relevant_turns_fts(user_id=user_id, query=query, limit=limit), True
+        return self._search_relevant_turns_like(user_id=user_id, query=query, limit=limit), False
 
     def _search_relevant_turns_fts(self, user_id: int, query: str, limit: int) -> List[Dict[str, str]]:
         tokens = _query_tokens(query)

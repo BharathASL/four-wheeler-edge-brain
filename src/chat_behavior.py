@@ -414,6 +414,8 @@ def deterministic_personal_response(user_text: str, speaker: str, facts: Sequenc
             return f"You are {speaker}. I do not have additional verified facts yet."
         summarized = "; ".join(re.sub(r"[.!?]+$", "", format_memory_fact_for_reply(fact)) for fact in facts[:3])
         return f"You are {speaker}. From our prior conversation: {summarized}."
+    if intent == "memory_generic" and is_question(user_text):
+        return memory_question_response(user_text, speaker, facts)
     return ""
 
 
@@ -580,7 +582,8 @@ def is_unhelpful_memory_reply(text: str) -> bool:
 
 def grounded_fallback_reply(user_text: str, speaker: str, facts: Sequence[str]) -> str:
     if is_personal_fact_statement(user_text):
-        return f"Got it, {speaker}. I have noted: {trim_snippet(user_text, max_chars=120)}"
+        formatted_fact = format_memory_fact_for_reply(user_text).rstrip(".")
+        return f"Got it, {speaker}. I'll remember that {formatted_fact}."
     if is_memory_question(user_text):
         return memory_question_response(user_text, speaker, facts)
     ranked_facts = rank_facts_for_query(user_text, facts)
@@ -588,7 +591,7 @@ def grounded_fallback_reply(user_text: str, speaker: str, facts: Sequence[str]) 
         if ranked_facts:
             return f"From what I remember: {format_memory_fact_for_reply(ranked_facts[0])}"
         return f"I remember you as {speaker}, but I need a bit more detail to answer reliably."
-    return f"Got it, {speaker}. I have noted: {trim_snippet(user_text, max_chars=120)}"
+    return f"Got it, {speaker}."
 
 
 def effective_retrieval_limit(user_text: str, retrieval_turns: int) -> int:
@@ -685,6 +688,68 @@ def _generate_with_adapter(llama, messages: Sequence[Dict[str, str]], max_tokens
     return llama.generate(prompt, max_tokens=max_tokens, timeout=timeout)
 
 
+def _generate_chat_reply_result(
+    llama,
+    user_text: str,
+    speaker_name: str,
+    recent_turns: Sequence[ChatTurn],
+    relevant_turns: Sequence[ChatTurn],
+    max_tokens: int = 128,
+    model_rate_limiter: ModelRateLimiter | None = None,
+) -> Tuple[str, str]:
+    known_facts = extract_known_facts(recent_turns, relevant_turns)
+    intent = detect_chat_intent(user_text)
+
+    deterministic_meal = deterministic_meal_memory_response(
+        user_text,
+        speaker_name,
+        recent_turns,
+        relevant_turns,
+    )
+    if deterministic_meal:
+        return deterministic_meal, "rule"
+
+    deterministic_personal = deterministic_personal_response(user_text, speaker_name, known_facts)
+    if deterministic_personal:
+        return deterministic_personal, "rule"
+
+    if intent == "memory_generic" and is_question(user_text):
+        return memory_question_response(user_text, speaker_name, known_facts), "rule"
+
+    if is_personal_fact_statement(user_text):
+        return grounded_fallback_reply(user_text, speaker_name, known_facts), "rule"
+
+    if model_rate_limiter is not None:
+        allowed, _retry_after = model_rate_limiter.allow()
+        if not allowed:
+            return MODEL_COOLDOWN_REPLY, "rule"
+
+    messages = build_chat_messages(user_text, speaker_name, recent_turns, relevant_turns)
+    reply = _generate_with_adapter(llama, messages, max_tokens=max_tokens, timeout=20)
+    cleaned_reply = sanitize_user_facing_reply(user_text, reply) or "[empty response]"
+    reply_source = "model"
+
+    if is_low_information_reply(cleaned_reply):
+        retry_messages = _retry_messages(
+            user_text,
+            speaker_name,
+            known_facts,
+            intent,
+        )
+        retry_reply = _generate_with_adapter(llama, retry_messages, max_tokens=min(80, max_tokens), timeout=12)
+        cleaned_reply = sanitize_user_facing_reply(user_text, retry_reply) or "[empty response]"
+
+    if is_low_information_reply(cleaned_reply):
+        cleaned_reply = grounded_fallback_reply(user_text, speaker_name, known_facts)
+        reply_source = "rule"
+
+    if is_memory_question(user_text) and is_unhelpful_memory_reply(cleaned_reply):
+        cleaned_reply = memory_question_response(user_text, speaker_name, known_facts)
+        reply_source = "rule"
+
+    return cleaned_reply, reply_source
+
+
 def generate_chat_reply(
     llama,
     user_text: str,
@@ -694,50 +759,36 @@ def generate_chat_reply(
     max_tokens: int = 128,
     model_rate_limiter: ModelRateLimiter | None = None,
 ) -> str:
-    known_facts = extract_known_facts(recent_turns, relevant_turns)
-
-    deterministic_meal = deterministic_meal_memory_response(
+    reply, _source = _generate_chat_reply_result(
+        llama,
         user_text,
         speaker_name,
         recent_turns,
         relevant_turns,
+        max_tokens=max_tokens,
+        model_rate_limiter=model_rate_limiter,
     )
-    if deterministic_meal:
-        return deterministic_meal
+    return reply
 
-    deterministic_personal = deterministic_personal_response(user_text, speaker_name, known_facts)
-    if deterministic_personal:
-        return deterministic_personal
 
-    if is_personal_fact_statement(user_text):
-        return grounded_fallback_reply(user_text, speaker_name, known_facts)
-
-    if model_rate_limiter is not None:
-        allowed, _retry_after = model_rate_limiter.allow()
-        if not allowed:
-            return MODEL_COOLDOWN_REPLY
-
-    messages = build_chat_messages(user_text, speaker_name, recent_turns, relevant_turns)
-    reply = _generate_with_adapter(llama, messages, max_tokens=max_tokens, timeout=20)
-    cleaned_reply = sanitize_user_facing_reply(user_text, reply) or "[empty response]"
-
-    if is_low_information_reply(cleaned_reply):
-        retry_messages = _retry_messages(
-            user_text,
-            speaker_name,
-            known_facts,
-            detect_chat_intent(user_text),
-        )
-        retry_reply = _generate_with_adapter(llama, retry_messages, max_tokens=min(80, max_tokens), timeout=12)
-        cleaned_reply = sanitize_user_facing_reply(user_text, retry_reply) or "[empty response]"
-
-    if is_low_information_reply(cleaned_reply):
-        cleaned_reply = grounded_fallback_reply(user_text, speaker_name, known_facts)
-
-    if is_memory_question(user_text) and is_unhelpful_memory_reply(cleaned_reply):
-        cleaned_reply = memory_question_response(user_text, speaker_name, known_facts)
-
-    return cleaned_reply
+def generate_chat_reply_with_source(
+    llama,
+    user_text: str,
+    speaker_name: str,
+    recent_turns: Sequence[ChatTurn],
+    relevant_turns: Sequence[ChatTurn],
+    max_tokens: int = 128,
+    model_rate_limiter: ModelRateLimiter | None = None,
+) -> Tuple[str, str]:
+    return _generate_chat_reply_result(
+        llama,
+        user_text,
+        speaker_name,
+        recent_turns,
+        relevant_turns,
+        max_tokens=max_tokens,
+        model_rate_limiter=model_rate_limiter,
+    )
 
 
 __all__ = [
@@ -749,6 +800,7 @@ __all__ = [
     "extract_known_facts",
     "format_memory_fact_for_reply",
     "generate_chat_reply",
+    "generate_chat_reply_with_source",
     "grounded_fallback_reply",
     "identify_speaker",
     "is_low_information_reply",

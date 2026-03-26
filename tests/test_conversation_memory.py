@@ -1,4 +1,18 @@
 from src.conversation_memory import ConversationMemoryStore, RetrievalBenchmarkRecorder
+from src.semantic_memory import InMemorySemanticBackend, SemanticMemoryIndex
+
+
+class _FakeEncoder:
+    dimensions = 3
+
+    def encode(self, texts):
+        mapping = {
+            "i enjoy masala chai\nnoted": [1.0, 0.0, 0.0],
+            "what drink do i like": [1.0, 0.0, 0.0],
+            "i enjoy espresso\nnoted": [0.0, 1.0, 0.0],
+            "what coffee do i enjoy": [0.0, 1.0, 0.0],
+        }
+        return [mapping.get(str(text).lower(), [0.0, 0.0, 1.0]) for text in texts]
 
 
 def test_get_or_create_user(tmp_path):
@@ -120,3 +134,50 @@ def test_search_relevant_turns_is_scoped_to_each_user_across_sessions(tmp_path):
     assert sam_rows
     assert all("green" in row["user"] or "dosa" in row["user"] for row in alex_rows)
     assert all("red" in row["user"] for row in sam_rows)
+
+
+def test_search_relevant_turns_semantic_mode_uses_semantic_index(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    semantic_index = SemanticMemoryIndex(
+        encoder=_FakeEncoder(),
+        backend=InMemorySemanticBackend(dimensions=3),
+        prefer_faiss=False,
+    )
+    store = ConversationMemoryStore(str(db_path), semantic_index=semantic_index)
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(user_id, "I enjoy masala chai", "noted")
+    store.append_turn(user_id, "I enjoy espresso", "noted")
+
+    rows = store.search_relevant_turns(
+        user_id=user_id,
+        query="What drink do I like",
+        limit=1,
+        retrieval_mode="semantic",
+    )
+
+    assert rows == [{"user": "I enjoy masala chai", "assistant": "noted"}]
+
+
+def test_search_relevant_turns_hybrid_mode_falls_back_to_lexical_when_needed(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    semantic_index = SemanticMemoryIndex(
+        encoder=_FakeEncoder(),
+        backend=InMemorySemanticBackend(dimensions=3),
+        prefer_faiss=False,
+    )
+    store = ConversationMemoryStore(str(db_path), semantic_index=semantic_index)
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(user_id, "my favorite color is blue", "noted")
+    store.append_turn(user_id, "I enjoy espresso", "noted")
+
+    rows = store.search_relevant_turns(
+        user_id=user_id,
+        query="favorite color",
+        limit=2,
+        retrieval_mode="hybrid",
+    )
+
+    assert rows
+    assert rows[0]["user"] == "my favorite color is blue"

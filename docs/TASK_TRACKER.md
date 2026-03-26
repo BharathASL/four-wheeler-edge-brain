@@ -68,6 +68,11 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add chat-memory regression coverage for contradiction and multi-session recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Regression tests now cover conflicting facts, leaked prompt scaffolding, cross-session alias recall, and per-user retrieval isolation |
 | Add prompt/context compaction for chat memory injection | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Chat prompts now cap recent and retrieved turns so model context stays focused on high-signal memory snippets |
 | Expand chat-memory evaluation coverage for paraphrase recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Migration-gate fixtures now include paraphrased memory queries with category-level recall reporting for direct vs paraphrase retrieval |
+| Evaluate Qwen chat behavior and tighten the rule-vs-model boundary | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Qwen local runtime available | Live testing shows Qwen improves open-ended grounded answers, but the current rules remain too text-heavy in some paths; keep exact memory recall guarded while reducing awkward rule-based surface responses |
+| Add structured multi-fact memory extraction and typed slot storage | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Qwen chat evaluation | Current storage treats many multi-fact inputs as one text blob, which weakens recall, filtering, and correction handling |
+| Add deterministic correction and overwrite handling for remembered facts | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P0 | Structured fact slots | Examples like favorite color blue -> black and Java -> Python are acknowledged but not applied to exact recall |
+| Separate session directives from durable personal memory | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Structured fact slots | Inputs such as `Always respond in one sentence.` should be handled as session behavior, not stored as long-term personal memory |
+| Add typed compound-memory recall and transcript-based chat regressions | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Structured fact slots | Cover multi-slot recall, number memory, quoted multi-speaker inputs, and food/preference filtering using live Qwen transcript cases |
 | Add rate limiting / cooldown on model calls | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Shared model cooldown guard now protects both command and chat paths and returns explicit cooldown responses instead of spamming model calls |
 | Define and enforce log rotation / log file size policy | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Telemetry now uses rotating file handlers by default with env-configurable size and retention policy |
 | Add input sanitization (guard against prompt injection) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Shared prompt-input sanitizer now neutralizes role markers and special tokens before decision/chat model calls while preserving deterministic routing and stored history |
@@ -127,7 +132,10 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add SQLite FTS retrieval for long-history recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Retrieve relevant older turns without loading full history into prompt |
 | Add retrieval benchmark hooks for migration-gate metrics | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Latency and retrieval-hit hooks added for recall benchmarking |
 | Define objective migration gate (latency + recall metrics) for FAISS adoption | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Evaluator script records recall@k and latency percentiles with threshold decision |
-| Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Migration gate complete | Keep metadata/filtering in SQLite; use FAISS for semantic nearest-neighbor |
+| Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Migration gate complete | Add semantic retrieval abstraction first, keep SQLite as source of truth, and gate runtime enablement on evaluator results |
+| Add semantic retrieval abstraction with FAISS-ready fallback path | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Hybrid memory design | Build semantic index module with optional FAISS backend and safe in-memory fallback for development/tests |
+| Extend migration-gate evaluator for semantic and hybrid retrieval modes | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Semantic retrieval abstraction | Compare lexical, semantic, and hybrid retrieval paths under the same recall/latency thresholds |
+| Document semantic memory architecture and enablement gate | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Hybrid memory design | Capture embedding/index decisions, fallback behavior, and the gate for promoting semantic retrieval |
 | Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added evaluator script with thresholded pass/fail and JSON report |
 | Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Decision engine tests now cover timeout, unavailable runtime, generic error, and malformed output |
 | Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P2 | Migration gate complete | Consider once conversation volume grows beyond simple SQLite recall |
@@ -179,17 +187,17 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ## Top 10 Next Actions
 
-1. 🟡 Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
-2. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
-3. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
-4. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
-5. 🟡 Draft command-interface spec for brain <-> robot mobility bridge (P0 — Phase 2).
-6. 🟡 Plan simulation → hardware transition (incremental PWM signal testing) (P1 — Phase 2).
-7. 🟡 Define GPIO/PWM duty cycle mapping and direction pin logic (P0 — Phase 2).
-8. 🟡 Define movement calibration procedure (left/right balance, turn radius, deadband) (P1 — Phase 2).
-9. 🟡 Validate migration-gate thresholds with retrieval benchmark data across long conversations (P1 — Phase 1.1).
-10. 🟡 Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) (P1 — Phase 1.1).
+1. 🔵 Evaluate Qwen chat behavior and tighten the rule-vs-model boundary using the 2026-03-26 live transcript (P1 — Phase 1.1).
+2. 🟡 Add structured multi-fact memory extraction and typed slot storage (P1 — Phase 1.1).
+3. 🟡 Add deterministic correction and overwrite handling for remembered facts (P0 — Phase 1.1).
+4. 🟡 Separate session directives from durable personal memory (P1 — Phase 1.1).
+5. 🟡 Add typed compound-memory recall and transcript-based regressions (P1 — Phase 1.1).
+6. 🔵 Complete the semantic retrieval abstraction with FAISS-ready fallback behavior (P1 — Phase 1.1).
+7. 🔵 Extend the migration gate to compare lexical, semantic, and hybrid retrieval modes (P1 — Phase 1.1).
+8. 🟡 Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
+9. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
+10. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
 
 ---
 
-Last updated: 2026-03-26 (Phase 1.1 chat-memory hardening completed for response cleanup, model-hint sanitization, conflict handling, prompt compaction, and multi-session regression coverage)
+Last updated: 2026-03-26 (Qwen local chat evaluation exposed the next Phase 1.1 gaps: structured multi-fact memory, correction handling, directive separation, and typed compound recall)
