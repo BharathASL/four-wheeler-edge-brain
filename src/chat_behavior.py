@@ -275,15 +275,20 @@ def extract_alias_preference(facts: Sequence[str]) -> str:
     return ""
 
 
-def memory_confidence(user_text: str, facts: Sequence[str]) -> str:
+def memory_confidence(user_text: str, facts: Sequence[str], top_fact: str | None = None) -> str:
     if not facts:
         return "low"
-    ranked_facts = rank_facts_for_query(user_text, facts)
     query_tokens = _token_set(user_text)
     if not query_tokens:
         return "medium"
 
-    top_tokens = _token_set(ranked_facts[0])
+    # If top_fact is provided (already selected by the caller), use it directly to
+    # avoid re-ranking and ensure confidence wording matches the returned fact.
+    if top_fact is None:
+        ranked_facts = rank_facts_for_query(user_text, facts)
+        top_fact = ranked_facts[0]
+
+    top_tokens = _token_set(top_fact)
     best_overlap = len(query_tokens.intersection(top_tokens))
     if best_overlap >= 2:
         return "high"
@@ -306,8 +311,8 @@ def memory_question_response(user_text: str, speaker: str, facts: Sequence[str])
         )
 
     ranked_facts = rank_facts_for_query(user_text, facts)
-    confidence = memory_confidence(user_text, ranked_facts)
     top_fact = ranked_facts[0]
+    confidence = memory_confidence(user_text, facts, top_fact=top_fact)
     if confidence == "high":
         return f"From what I remember: {top_fact}"
     if confidence == "medium":
@@ -349,9 +354,9 @@ def is_unhelpful_memory_reply(text: str) -> bool:
 
 
 def grounded_fallback_reply(user_text: str, speaker: str, facts: Sequence[str]) -> str:
-    ranked_facts = rank_facts_for_query(user_text, facts)
     if is_memory_question(user_text):
-        return memory_question_response(user_text, speaker, ranked_facts)
+        return memory_question_response(user_text, speaker, facts)
+    ranked_facts = rank_facts_for_query(user_text, facts)
     if is_question(user_text):
         if ranked_facts:
             return f"From what I remember: {ranked_facts[0]}"
