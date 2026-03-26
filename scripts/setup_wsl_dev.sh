@@ -118,6 +118,20 @@ create_venv() {
         fi
 
         log "Existing virtual environment at $VENV_PATH is incomplete; recreating it"
+        # Safety: only remove if the directory actually looks like a venv
+        if [[ ! -f "$VENV_PATH/pyvenv.cfg" ]]; then
+            printf 'Refusing to remove %s: does not look like a virtual environment (pyvenv.cfg missing).\n' "$VENV_PATH" >&2
+            exit 1
+        fi
+        # Safety: refuse to delete root or home directory
+        local real_path
+        real_path="$(realpath "$VENV_PATH")"
+        local home_real
+        home_real="$(realpath ~)"
+        if [[ "$real_path" == "/" ]] || [[ "$real_path" == "$home_real" ]]; then
+            printf 'Refusing to remove %s: path is too dangerous to delete.\n' "$VENV_PATH" >&2
+            exit 1
+        fi
         run_cmd rm -rf "$VENV_PATH"
     fi
 

@@ -49,7 +49,6 @@ class SpeechInputListener(InputListener):
         self._pending_error: Optional[str] = None
 
     def poll_once(self) -> Optional[str]:
-        self._pending_error = None
         try:
             audio_data = self.audio_adapter.record(self.duration)
             text = self.stt_adapter.transcribe(audio_data).strip()
@@ -65,6 +64,7 @@ class SpeechInputListener(InputListener):
 
         if not text:
             return None
+        self._pending_error = None
         return text
 
     def take_error(self) -> Optional[str]:

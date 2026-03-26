@@ -89,3 +89,43 @@ def test_speech_listener_maps_unknown_failure_to_stt_error():
 
 def test_speech_listener_exports_in_module_namespace():
     assert SpeechInputListener is not None
+
+
+def test_speech_listener_preserves_error_across_polls():
+    """Error from a failed poll must survive a subsequent poll without take_error() being called."""
+
+    class _UnavailableSpeechToTextAdapter:
+        def transcribe(self, audio_data):
+            raise RuntimeError("vosk unavailable")
+
+    listener = SpeechInputListener(
+        audio_adapter=MockAudioAdapter(),
+        stt_adapter=_UnavailableSpeechToTextAdapter(),
+    )
+
+    assert listener.poll_once() is None  # sets _pending_error
+    assert listener.poll_once() is None  # must NOT clear the previous error
+    assert listener.take_error() == "STT_UNAVAILABLE"
+
+
+def test_speech_listener_clears_error_on_successful_transcription():
+    """A successful transcription must clear any previously pending error."""
+
+    class _RecoveringSpeechToTextAdapter:
+        def __init__(self):
+            self._calls = 0
+
+        def transcribe(self, audio_data):
+            self._calls += 1
+            if self._calls == 1:
+                raise RuntimeError("first call fails")
+            return "dock now"
+
+    listener = SpeechInputListener(
+        audio_adapter=MockAudioAdapter(),
+        stt_adapter=_RecoveringSpeechToTextAdapter(),
+    )
+
+    assert listener.poll_once() is None  # sets _pending_error
+    assert listener.poll_once() == "dock now"  # success clears the error
+    assert listener.take_error() is None
