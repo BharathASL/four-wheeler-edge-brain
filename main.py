@@ -180,9 +180,11 @@ def chat_loop(
     strict_model: bool = False,
     max_tokens: int = 128,
     history_turns: int = 4,
+    retrieval_turns: int = 3,
+    benchmark_memory_retrieval: bool = False,
     memory_db_path: str = "data/conversations.sqlite",
 ):
-    from src.conversation_memory import ConversationMemoryStore
+    from src.conversation_memory import ConversationMemoryStore, RetrievalBenchmarkRecorder
 
     def _clean_chat_reply(text: str) -> str:
         cleaned = (text or "").strip()
@@ -206,6 +208,7 @@ def chat_loop(
 
     logger = init_telemetry("phase1_chat")
     memory_store = ConversationMemoryStore(db_path=memory_db_path)
+    retrieval_bench = RetrievalBenchmarkRecorder() if benchmark_memory_retrieval else None
     llama, effective_mode = _build_llama_adapter(
         model_mode=model_mode,
         model_path=model_path,
@@ -220,6 +223,9 @@ def chat_loop(
     print("Type 'quit' or 'exit' to stop")
     print("Type '/switch' to switch speaker profile")
     print(f"Chat history window: last {history_turns} turns")
+    print(f"Long-memory retrieval window: top {retrieval_turns} turns")
+    if retrieval_bench is not None:
+        print("Memory retrieval benchmark hooks: enabled")
 
     try:
         while True:
@@ -234,12 +240,32 @@ def chat_loop(
                 continue
 
             recent = memory_store.get_recent_turns(speaker_id, limit=history_turns)
+            relevant_old = memory_store.search_relevant_turns(
+                user_id=speaker_id,
+                query=user,
+                limit=retrieval_turns,
+                metrics_hook=retrieval_bench.record if retrieval_bench is not None else None,
+            )
+
+            recent_pairs = {(turn["user"], turn["assistant"]) for turn in recent}
+            relevant_old = [
+                turn for turn in relevant_old if (turn["user"], turn["assistant"]) not in recent_pairs
+            ]
+
             history_lines = [
                 "You are an offline robot assistant.",
                 "Reply briefly and clearly.",
                 f"Current speaker name: {speaker_name}",
                 "Use prior turns for continuity when they are relevant.",
             ]
+
+            if relevant_old:
+                history_lines.append("Relevant older memory snippets:")
+                for turn in relevant_old:
+                    history_lines.append(f"Memory User: {turn['user']}")
+                    history_lines.append(f"Memory Assistant: {turn['assistant']}")
+
+            history_lines.append("Recent conversation:")
             for turn in recent:
                 history_lines.append(f"User: {turn['user']}")
                 history_lines.append(f"Assistant: {turn['assistant']}")
@@ -257,6 +283,19 @@ def chat_loop(
                 print(f"assistant> [error] {exc}")
     except KeyboardInterrupt:
         print("exiting")
+    finally:
+        if retrieval_bench is not None:
+            summary = retrieval_bench.summary()
+            print(
+                "Memory retrieval metrics:",
+                (
+                    f"queries={int(summary['queries'])} "
+                    f"avg_ms={summary['avg_latency_ms']:.2f} "
+                    f"max_ms={summary['max_latency_ms']:.2f} "
+                    f"avg_hits={summary['avg_returned_count']:.2f} "
+                    f"fts_ratio={summary['fts_usage_ratio']:.2f}"
+                ),
+            )
 
 
 def main():
@@ -276,6 +315,8 @@ def main():
         cli_model_path = env_model_path
         cli_lib_path = env_lib_path
         cli_history_turns = 4
+        cli_retrieval_turns = 3
+        cli_benchmark_memory_retrieval = False
         cli_memory_db_path = env_memory_db_path
 
         for idx, token in enumerate(sys.argv):
@@ -291,8 +332,16 @@ def main():
                 except ValueError:
                     print("Invalid --chat-history-turns value; defaulting to 4")
                     cli_history_turns = 4
+            if token == "--retrieval-turns" and idx + 1 < len(sys.argv):
+                try:
+                    cli_retrieval_turns = max(0, int(sys.argv[idx + 1]))
+                except ValueError:
+                    print("Invalid --retrieval-turns value; defaulting to 3")
+                    cli_retrieval_turns = 3
             if token == "--memory-db-path" and idx + 1 < len(sys.argv):
                 cli_memory_db_path = sys.argv[idx + 1]
+        if "--benchmark-memory-retrieval" in sys.argv:
+            cli_benchmark_memory_retrieval = True
 
         if chat_mode:
             chat_loop(
@@ -301,6 +350,8 @@ def main():
                 llama_lib_path=cli_lib_path,
                 strict_model=strict_model,
                 history_turns=cli_history_turns,
+                retrieval_turns=cli_retrieval_turns,
+                benchmark_memory_retrieval=cli_benchmark_memory_retrieval,
                 memory_db_path=cli_memory_db_path,
             )
             return

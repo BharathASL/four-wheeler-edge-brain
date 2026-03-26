@@ -1,0 +1,47 @@
+{
+  "speaker_name": "migration-gate-eval-user",
+  "turns": [
+    {
+      "user": "My favorite drink is masala chai.",
+      "assistant": "Got it, your favorite drink is masala chai."
+    },
+    {
+      "user": "I usually work from home on Fridays.",
+      "assistant": "Understood, Fridays are your work-from-home days."
+    },
+    {
+      "user": "Remind me to call mom on Sunday evening.",
+      "assistant": "Sure, I will remember your Sunday evening reminder."
+    },
+    {
+      "user": "Our robot battery swap interval is every 6 hours.",
+      "assistant": "Noted, battery swap interval is 6 hours."
+    },
+    {
+      "user": "I prefer concise answers unless I ask for detail.",
+      "assistant": "Okay, I will keep replies concise by default."
+    }
+  ],
+  "queries": [
+    {
+      "query": "What drink do I like?",
+      "expect_any": ["masala chai"]
+    },
+    {
+      "query": "When do I work from home?",
+      "expect_any": ["friday", "fridays"]
+    },
+    {
+      "query": "What reminder did I set for Sunday?",
+      "expect_any": ["call mom", "sunday evening"]
+    },
+    {
+      "query": "How often should battery be swapped?",
+      "expect_any": ["6 hours", "every 6 hours"]
+    },
+    {
+      "query": "How should you answer by default?",
+      "expect_any": ["concise"]
+    }
+  ]
+}

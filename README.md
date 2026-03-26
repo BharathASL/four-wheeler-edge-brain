@@ -83,6 +83,26 @@ Tune multi-turn chat memory depth (number of prior user/assistant turns to inclu
 python main.py --chat-mode --chat-history-turns 6 --model-mode real --model-path /absolute/path/to/model.gguf --strict-model
 ```
 
+Enable long-history retrieval from older conversations (SQLite FTS):
+
+```bash
+python main.py --chat-mode --chat-history-turns 6 --retrieval-turns 4 --strict-model
+```
+
+Enable retrieval benchmark hooks (prints latency/hit metrics on exit):
+
+```bash
+python main.py --chat-mode --benchmark-memory-retrieval --strict-model
+```
+
+Run migration-gate evaluator (recall@k + latency percentiles over fixed query set):
+
+```bash
+python scripts/evaluate_migration_gate.py --output-json data/migration_gate_report.json
+```
+
+The evaluator exits with code 0 when thresholds pass and 2 when thresholds fail.
+
 Optional: override memory database location:
 
 ```bash

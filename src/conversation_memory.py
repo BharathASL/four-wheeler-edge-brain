@@ -5,8 +5,49 @@ from __future__ import annotations
 import sqlite3
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
+
+
+@dataclass
+class RetrievalMetrics:
+    query: str
+    latency_ms: float
+    returned_count: int
+    used_fts: bool
+
+
+class RetrievalBenchmarkRecorder:
+    """In-memory metrics sink used to benchmark retrieval quality and latency."""
+
+    def __init__(self):
+        self._records: List[RetrievalMetrics] = []
+
+    def record(self, metrics: RetrievalMetrics) -> None:
+        self._records.append(metrics)
+
+    def summary(self) -> Dict[str, float]:
+        if not self._records:
+            return {
+                "queries": 0,
+                "avg_latency_ms": 0.0,
+                "max_latency_ms": 0.0,
+                "avg_returned_count": 0.0,
+                "fts_usage_ratio": 0.0,
+            }
+
+        count = len(self._records)
+        total_latency = sum(r.latency_ms for r in self._records)
+        total_returned = sum(r.returned_count for r in self._records)
+        fts_used = sum(1 for r in self._records if r.used_fts)
+        return {
+            "queries": float(count),
+            "avg_latency_ms": total_latency / count,
+            "max_latency_ms": max(r.latency_ms for r in self._records),
+            "avg_returned_count": total_returned / count,
+            "fts_usage_ratio": fts_used / count,
+        }
 
 
 class ConversationMemoryStore:
@@ -16,6 +57,7 @@ class ConversationMemoryStore:
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        self._fts_enabled = False
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
@@ -51,6 +93,37 @@ class ConversationMemoryStore:
                     ON conversation_turns(user_id, id)
                     """
                 )
+
+                # Use FTS5 when available for scalable long-history recall.
+                try:
+                    conn.execute(
+                        """
+                        CREATE VIRTUAL TABLE IF NOT EXISTS conversation_turns_fts
+                        USING fts5(
+                            user_id UNINDEXED,
+                            turn_id UNINDEXED,
+                            user_text,
+                            assistant_text
+                        )
+                        """
+                    )
+                    self._fts_enabled = True
+
+                    # Backfill FTS table from existing rows if needed.
+                    existing = conn.execute("SELECT COUNT(*) FROM conversation_turns_fts").fetchone()
+                    existing_count = int(existing[0]) if existing else 0
+                    if existing_count == 0:
+                        conn.execute(
+                            """
+                            INSERT INTO conversation_turns_fts(user_id, turn_id, user_text, assistant_text)
+                            SELECT user_id, id, user_text, assistant_text
+                            FROM conversation_turns
+                            """
+                        )
+                except sqlite3.OperationalError:
+                    # Some SQLite builds may not include FTS5.
+                    self._fts_enabled = False
+
                 conn.commit()
 
     def get_or_create_user(self, name: str) -> Tuple[int, bool]:
@@ -75,13 +148,21 @@ class ConversationMemoryStore:
     def append_turn(self, user_id: int, user_text: str, assistant_text: str) -> None:
         with self._lock:
             with self._connect() as conn:
-                conn.execute(
+                cursor = conn.execute(
                     """
                     INSERT INTO conversation_turns(user_id, user_text, assistant_text, created_at)
                     VALUES(?, ?, ?, ?)
                     """,
                     (user_id, user_text, assistant_text, time.time()),
                 )
+                if self._fts_enabled:
+                    conn.execute(
+                        """
+                        INSERT INTO conversation_turns_fts(user_id, turn_id, user_text, assistant_text)
+                        VALUES(?, ?, ?, ?)
+                        """,
+                        (user_id, int(cursor.lastrowid), user_text, assistant_text),
+                    )
                 conn.commit()
 
     def get_recent_turns(self, user_id: int, limit: int = 6) -> List[Dict[str, str]]:
@@ -110,5 +191,81 @@ class ConversationMemoryStore:
             for row in rows
         ]
 
+    def search_relevant_turns(
+        self,
+        user_id: int,
+        query: str,
+        limit: int = 4,
+        metrics_hook: Optional[Callable[[RetrievalMetrics], None]] = None,
+    ) -> List[Dict[str, str]]:
+        if limit <= 0:
+            return []
 
-__all__ = ["ConversationMemoryStore"]
+        normalized_query = (query or "").strip()
+        if not normalized_query:
+            return []
+
+        start = time.perf_counter()
+        if self._fts_enabled:
+            rows = self._search_relevant_turns_fts(user_id=user_id, query=normalized_query, limit=limit)
+            used_fts = True
+        else:
+            rows = self._search_relevant_turns_like(user_id=user_id, query=normalized_query, limit=limit)
+            used_fts = False
+
+        latency_ms = (time.perf_counter() - start) * 1000.0
+        if metrics_hook is not None:
+            metrics_hook(
+                RetrievalMetrics(
+                    query=normalized_query,
+                    latency_ms=latency_ms,
+                    returned_count=len(rows),
+                    used_fts=used_fts,
+                )
+            )
+
+        return rows
+
+    def _search_relevant_turns_fts(self, user_id: int, query: str, limit: int) -> List[Dict[str, str]]:
+        tokens = [tok for tok in query.replace("?", " ").replace("!", " ").replace(",", " ").split() if tok]
+        if not tokens:
+            return []
+
+        fts_query = " OR ".join(tokens)
+        with self._lock:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT user_text, assistant_text
+                    FROM conversation_turns_fts
+                    WHERE user_id = ?
+                      AND conversation_turns_fts MATCH ?
+                    ORDER BY bm25(conversation_turns_fts)
+                    LIMIT ?
+                    """,
+                    (user_id, fts_query, limit),
+                ).fetchall()
+
+        return [{"user": str(row[0]), "assistant": str(row[1])} for row in rows]
+
+    def _search_relevant_turns_like(self, user_id: int, query: str, limit: int) -> List[Dict[str, str]]:
+        pattern = f"%{query}%"
+        with self._lock:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT user_text, assistant_text
+                    FROM conversation_turns
+                    WHERE user_id = ?
+                      AND (user_text LIKE ? OR assistant_text LIKE ?)
+                    ORDER BY id DESC
+                    LIMIT ?
+                    """,
+                    (user_id, pattern, pattern, limit),
+                ).fetchall()
+
+        rows = list(reversed(rows))
+        return [{"user": str(row[0]), "assistant": str(row[1])} for row in rows]
+
+
+__all__ = ["ConversationMemoryStore", "RetrievalBenchmarkRecorder", "RetrievalMetrics"]
