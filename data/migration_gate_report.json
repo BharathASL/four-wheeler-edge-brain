@@ -1,0 +1,124 @@
+{
+  "dataset": "scripts/migration_gate_query_set.json",
+  "db_path": "data/migration_gate_eval.sqlite",
+  "k": 4,
+  "thresholds": {
+    "min_recall_at_k": 0.8,
+    "max_p95_ms": 20.0,
+    "max_p99_ms": 30.0
+  },
+  "metrics": {
+    "query_count": 10,
+    "recall_at_k": 1.0,
+    "recall_by_category": {
+      "direct": 1.0,
+      "paraphrase": 1.0
+    },
+    "latency_ms_p50": 9.991725499276072,
+    "latency_ms_p95": 15.078616400569437,
+    "latency_ms_p99": 17.848603280290266,
+    "fts_usage_ratio": 1.0
+  },
+  "decision": {
+    "pass": true,
+    "recommendation": "Keep SQLite retrieval for now"
+  },
+  "per_query": [
+    {
+      "query": "What drink do I like?",
+      "category": "direct",
+      "expected": [
+        "masala chai"
+      ],
+      "matched": true,
+      "returned_count": 1
+    },
+    {
+      "query": "When do I work from home?",
+      "category": "direct",
+      "expected": [
+        "friday",
+        "fridays"
+      ],
+      "matched": true,
+      "returned_count": 1
+    },
+    {
+      "query": "What reminder did I set for Sunday?",
+      "category": "direct",
+      "expected": [
+        "call mom",
+        "sunday evening"
+      ],
+      "matched": true,
+      "returned_count": 2
+    },
+    {
+      "query": "How often should battery be swapped?",
+      "category": "direct",
+      "expected": [
+        "6 hours",
+        "every 6 hours"
+      ],
+      "matched": true,
+      "returned_count": 1
+    },
+    {
+      "query": "How should you answer by default?",
+      "category": "direct",
+      "expected": [
+        "concise"
+      ],
+      "matched": true,
+      "returned_count": 1
+    },
+    {
+      "query": "What chai do I prefer drinking?",
+      "category": "paraphrase",
+      "expected": [
+        "masala chai"
+      ],
+      "matched": true,
+      "returned_count": 2
+    },
+    {
+      "query": "Which day is my work-from-home day?",
+      "category": "paraphrase",
+      "expected": [
+        "friday",
+        "fridays"
+      ],
+      "matched": true,
+      "returned_count": 1
+    },
+    {
+      "query": "What should I remember to do on Sunday evening?",
+      "category": "paraphrase",
+      "expected": [
+        "call mom",
+        "sunday evening"
+      ],
+      "matched": true,
+      "returned_count": 1
+    },
+    {
+      "query": "What is the battery swap cadence?",
+      "category": "paraphrase",
+      "expected": [
+        "6 hours",
+        "every 6 hours"
+      ],
+      "matched": true,
+      "returned_count": 1
+    },
+    {
+      "query": "Are your replies brief by default?",
+      "category": "paraphrase",
+      "expected": [
+        "concise"
+      ],
+      "matched": true,
+      "returned_count": 2
+    }
+  ]
+}
