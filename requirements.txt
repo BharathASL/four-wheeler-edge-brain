@@ -1,0 +1,10 @@
+pytest
+docker
+docker
+
+# Runtime dependencies (Phase-1 PoC on Raspberry Pi 4, 4GB)
+llama-cpp-python
+vosk
+sounddevice
+pyttsx3
+numpy

@@ -1,0 +1,17 @@
+/.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+models/
+*.bin
+*.so
+*.dll
+*.log
+/.mypy_cache/
+
+# Runtime conversation memory artifacts
+/data/*.sqlite
+/data/*.sqlite-shm
+/data/*.sqlite-wal

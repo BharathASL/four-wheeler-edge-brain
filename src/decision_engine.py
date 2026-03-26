@@ -1,0 +1,83 @@
+"""Decision Engine: rules-first with optional model fallback.
+
+This module exposes a `DecisionEngine` class that accepts input text and
+returns a structured ACTION dict. The implementation below is intentionally
+minimal for Phase‑1 and suitable for unit testing with mocked adapters.
+"""
+from typing import Dict, Any
+
+
+class DecisionEngine:
+    def __init__(self, llama_adapter=None, model_timeout: float = 5.0):
+        self.llama = llama_adapter
+        self.model_timeout = model_timeout
+
+    def decide(self, user_input: str, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a structured ACTION dict.
+
+        Strategy:
+        1. Apply simple rules for urgent or safety commands.
+        2. If no rule matches and a model is available, call model for suggestion.
+        3. Always return a dict with `action` and optional `params`.
+        """
+        text = user_input.strip().lower()
+
+        if not text:
+            return {"action": "IDLE", "params": {"reason": "EMPTY_COMMAND"}}
+
+        # Rule: emergency stop takes highest priority.
+        if any(k in text for k in ("e-stop", "estop", "emergency stop", "emergency", "hard stop")):
+            return {"action": "ESTOP", "params": {"reason": "USER_REQUEST"}}
+
+        if "reset estop" in text or "reset emergency" in text:
+            return {"action": "RESET_ESTOP", "params": {}}
+
+        if any(k in text for k in ("stop", "halt")):
+            return {"action": "STOP", "params": {}}
+
+        if "override on" in text:
+            return {"action": "OVERRIDE_ON", "params": {}}
+        if "override off" in text:
+            return {"action": "OVERRIDE_OFF", "params": {}}
+
+        # Rule: battery
+        if "charge" in text or "dock" in text:
+            return {"action": "DOCK", "params": {}}
+
+        # Rule: basic movement intents (will be safety-clamped by executor).
+        if "forward" in text:
+            return {"action": "MOVE", "params": {"linear_mps": 0.5, "angular_dps": 0.0}}
+        if "back" in text or "reverse" in text:
+            return {"action": "MOVE", "params": {"linear_mps": -0.2, "angular_dps": 0.0}}
+        if "left" in text:
+            return {"action": "MOVE", "params": {"linear_mps": 0.0, "angular_dps": 60.0}}
+        if "right" in text:
+            return {"action": "MOVE", "params": {"linear_mps": 0.0, "angular_dps": -60.0}}
+
+        # Model fallback
+        if self.llama is not None:
+            prompt = f"Decide action for input: {user_input}\nState: {state}\nReturn JSON with action and params."
+            try:
+                resp = self.llama.generate(prompt, max_tokens=128, timeout=self.model_timeout)
+                # Unknown command path: ask for confirmation and stay safe/idle.
+                return {
+                    "action": "IDLE",
+                    "params": {
+                        "reason": "UNKNOWN_COMMAND",
+                        "confirmation_required": True,
+                        "model_hint": resp,
+                    },
+                }
+            except TimeoutError:
+                return {"action": "IDLE", "params": {"reason": "MODEL_TIMEOUT", "confirmation_required": True}}
+            except RuntimeError:
+                # Runtime (native lib missing) — fall back to IDLE so tests/dev don't crash
+                return {"action": "IDLE", "params": {"reason": "MODEL_UNAVAILABLE", "confirmation_required": True}}
+            except Exception:
+                return {"action": "IDLE", "params": {"reason": "MODEL_ERROR", "confirmation_required": True}}
+
+        # Default: unknowns are safe-idle with explicit confirmation requirement.
+        return {"action": "IDLE", "params": {"reason": "UNKNOWN_COMMAND", "confirmation_required": True}}
+
+
+__all__ = ["DecisionEngine"]

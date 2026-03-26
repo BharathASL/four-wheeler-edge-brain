@@ -1,0 +1,25 @@
+[Unit]
+Description=Autonomous 4-Wheeler Robot (Phase-1 PoC)
+After=network.target
+
+[Service]
+Type=simple
+# Replace <user> and <path> with the system user and project path on the Pi.
+User=pi
+WorkingDirectory=/home/pi/four-wheeler-robot
+# Activate virtualenv and run the PoC entrypoint. Adjust paths as needed.
+Environment=MODEL_PATH=/mnt/ssd/models/tinyllama-q4.bin
+Environment=LLAMA_LIB_PATH=/home/pi/llama.cpp/libllama.so
+ExecStart=/home/pi/.venv/bin/python /home/pi/four-wheeler-robot/main.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
+# Notes:
+# - This is an example unit file. Do NOT copy blindly; update `User`, `WorkingDirectory`,
+#   `ExecStart`, and env vars for your device. The unit is intentionally minimal to
+#   illustrate startup, restart behavior, and env var placement.
