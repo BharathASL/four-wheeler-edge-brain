@@ -1,4 +1,3 @@
-import json
 
 from src.llama_adapter import MockLlamaAdapter
 from src.model_rate_limiter import ModelRateLimiter

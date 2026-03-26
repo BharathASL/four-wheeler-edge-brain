@@ -98,7 +98,9 @@ def _ensure_sentence(text: str) -> str:
 
 def format_memory_fact_for_reply(fact: str) -> str:
     candidate = _strip_memory_instruction(fact)
-    lowered = candidate.lower()
+    # Match case-insensitively against the original candidate so that proper
+    # nouns (e.g. "Alex", "London") keep their original casing in the reply.
+    # m.group(n) slices directly from candidate, preserving original casing.
     patterns = (
         (r"^my favorite\s+([a-z]+)\s+is\s+(.+)$", lambda m: f"your favorite {m.group(1)} is {m.group(2).strip()}"),
         (r"^i had\s+(.+?)\s+for\s+(breakfast|lunch|dinner)$", lambda m: f"you had {m.group(1).strip()} for {m.group(2)}"),
@@ -108,7 +110,7 @@ def format_memory_fact_for_reply(fact: str) -> str:
         (r"^(call me|refer to me as|from now on call me)\s+(.+)$", lambda m: f"you asked me to call you {m.group(2).strip()}"),
     )
     for pattern, formatter in patterns:
-        match = re.match(pattern, lowered)
+        match = re.match(pattern, candidate, flags=re.IGNORECASE)
         if match:
             return _ensure_sentence(formatter(match))
     return _ensure_sentence(candidate)
@@ -191,7 +193,16 @@ def has_prompt_leak(text: str) -> bool:
     normalized = _normalize_text(text)
     if not normalized:
         return False
-    return any(marker in normalized for marker in _PROMPT_LEAK_MARKERS)
+    # Require at least two distinct leak markers to reduce false positives from
+    # benign phrases like "operating system:" that coincidentally contain a
+    # generic substring such as "system:" but are not actual prompt templates.
+    leak_count = 0
+    for marker in _PROMPT_LEAK_MARKERS:
+        if marker in normalized:
+            leak_count += 1
+            if leak_count >= 2:
+                return True
+    return False
 
 
 def looks_like_user_perspective_reply(user_text: str, reply_text: str) -> bool:
@@ -401,7 +412,7 @@ def deterministic_personal_response(user_text: str, speaker: str, facts: Sequenc
     if intent == "identity_profile":
         if not facts:
             return f"You are {speaker}. I do not have additional verified facts yet."
-        summarized = "; ".join(format_memory_fact_for_reply(fact).rstrip(".") for fact in facts[:3])
+        summarized = "; ".join(re.sub(r"[.!?]+$", "", format_memory_fact_for_reply(fact)) for fact in facts[:3])
         return f"You are {speaker}. From our prior conversation: {summarized}."
     return ""
 
