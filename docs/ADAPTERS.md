@@ -23,6 +23,7 @@ Class: LlamaAdapter
   - Returns model output text.
   - Raises RuntimeError when native runtime is missing.
   - Raises TimeoutError when timeout expires.
+  - Returned text may contain raw model scaffolding; callers must sanitize before user display.
 
 Class: MockLlamaAdapter(LlamaAdapter)
 
@@ -74,6 +75,12 @@ DecisionEngine output schema:
 
 - {"action": str, "params": dict}
 
+User-display contract for model-backed text:
+
+- Any model-generated text shown to the user must strip prompt scaffolding such as `Speaker:`, `Known facts:`, `User:`, `Assistant:`, and special chat tokens.
+- Personal-memory answers must speak to the user directly instead of echoing the user's perspective. Example: `You said you had dosa for dinner.` is acceptable; `I had dosa for dinner.` is not.
+- Unknown-command hints must remain display-safe and fall back to a generic clarification message when cleanup cannot produce a safe result.
+
 Known action values:
 
 - IDLE
@@ -88,8 +95,13 @@ Known action values:
 
 Known IDLE reasons:
 
+- EMPTY_COMMAND
+- MODEL_COOLDOWN
+- MODEL_ERROR
+- MODEL_MALFORMED_OUTPUT
 - MODEL_TIMEOUT
 - MODEL_UNAVAILABLE
+- UNKNOWN_COMMAND
 
 ## Input Listener Contract
 

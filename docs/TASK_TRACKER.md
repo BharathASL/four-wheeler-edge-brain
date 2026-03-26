@@ -60,8 +60,13 @@ This file is the source of truth for planning and progress tracking in the repos
 | Implement STT failure degradation to deterministic safe behavior | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Speech input listener now degrades STT failures to safe IDLE behavior with test coverage |
 | Add end-to-end integration test (Input → Decision → Executor → State) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added synchronous loop coverage around the runtime command-processing path |
 | Refactor and harden chat behavior pipeline | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Chat behavior extracted to src/chat_behavior.py with deterministic routing, intent handling, and low-information fallback coverage |
-| Improve chat-memory ranking and confidence scoring | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | SQLite + FTS path now ranks facts by overlap/direct match/recency before answering memory questions |
-| Harden grounded personal-memory responses and prompt-leak cleanup | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Cleaned leaked retry scaffolding from outputs, added deterministic alias recall, and added transcript-based regression tests |
+| Improve chat-memory ranking and confidence scoring | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | SQLite + FTS path now ranks facts by overlap/direct match/recency and supports cleaner normalized recall for grounded memory answers |
+| Harden grounded personal-memory responses and prompt-leak cleanup | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Cleanup now strips leaked prompt labels and rejects wrong-perspective personal-memory answers before user display |
+| Add response perspective validation and raw-output cleanup | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Chat replies now sanitize prompt scaffolding, reject user-perspective leaks, and fall back to grounded responses when needed |
+| Filter decision-engine model hints for user display | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Unknown-command model hints now reuse display-safe cleanup and fall back to a generic safe clarification message |
+| Improve chat-memory conflict resolution and recency handling | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Fact extraction and retrieval now favor the latest matching user detail, and personal-fact statements are normalized before persistence so corrected facts stay cleaner across sessions |
+| Add chat-memory regression coverage for contradiction and multi-session recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Regression tests now cover conflicting facts, leaked prompt scaffolding, cross-session alias recall, and per-user retrieval isolation |
+| Add prompt/context compaction for chat memory injection | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Chat prompts now cap recent and retrieved turns so model context stays focused on high-signal memory snippets |
 | Expand chat-memory evaluation coverage for paraphrase recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Migration-gate fixtures now include paraphrased memory queries with category-level recall reporting for direct vs paraphrase retrieval |
 | Add rate limiting / cooldown on model calls | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Shared model cooldown guard now protects both command and chat paths and returns explicit cooldown responses instead of spamming model calls |
 | Define and enforce log rotation / log file size policy | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Telemetry now uses rotating file handlers by default with env-configurable size and retention policy |
@@ -177,14 +182,14 @@ This file is the source of truth for planning and progress tracking in the repos
 1. 🟡 Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
 2. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
 3. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
-4. 🟡 Define and enforce log rotation / log file size policy (P1 — Phase 1.1).
-5. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
-6. 🟡 Draft command-interface spec for brain <-> robot mobility bridge (P0 — Phase 2).
-7. 🟡 Validate migration-gate thresholds with retrieval benchmark data across long conversations (P1 — Phase 1.1).
-8. 🟡 Plan simulation → hardware transition (incremental PWM signal testing) (P1 — Phase 2).
-9. 🟡 Define movement calibration procedure (left/right balance, turn radius, deadband) (P1 — Phase 2).
-10. 🟡 Define GPIO/PWM duty cycle mapping and direction pin logic (P0 — Phase 2).
+4. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
+5. 🟡 Draft command-interface spec for brain <-> robot mobility bridge (P0 — Phase 2).
+6. 🟡 Plan simulation → hardware transition (incremental PWM signal testing) (P1 — Phase 2).
+7. 🟡 Define GPIO/PWM duty cycle mapping and direction pin logic (P0 — Phase 2).
+8. 🟡 Define movement calibration procedure (left/right balance, turn radius, deadband) (P1 — Phase 2).
+9. 🟡 Validate migration-gate thresholds with retrieval benchmark data across long conversations (P1 — Phase 1.1).
+10. 🟡 Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) (P1 — Phase 1.1).
 
 ---
 
-Last updated: 2026-03-26 (Phase 1.1 chat behavior refactor, grounding cleanup, paraphrase evaluation, shared model cooldown, input sanitization, and log rotation implemented)
+Last updated: 2026-03-26 (Phase 1.1 chat-memory hardening completed for response cleanup, model-hint sanitization, conflict handling, prompt compaction, and multi-session regression coverage)
