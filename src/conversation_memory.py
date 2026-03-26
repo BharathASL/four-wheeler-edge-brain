@@ -10,6 +10,47 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
 
+def _query_tokens(query: str) -> List[str]:
+    cleaned = []
+    for ch in (query or "").lower():
+        cleaned.append(ch if ch.isalnum() or ch.isspace() else " ")
+
+    words = [w for w in "".join(cleaned).split() if len(w) >= 3]
+    stop = {
+        "what",
+        "when",
+        "where",
+        "which",
+        "this",
+        "that",
+        "have",
+        "with",
+        "from",
+        "your",
+        "about",
+        "remember",
+        "remeber",
+        "know",
+        "please",
+        "could",
+        "would",
+        "should",
+        "there",
+        "their",
+        "them",
+        "they",
+        "were",
+        "been",
+        "being",
+        "into",
+        "just",
+    }
+    prioritized = [w for w in words if w not in stop]
+    if prioritized:
+        return prioritized
+    return words
+
+
 @dataclass
 class RetrievalMetrics:
     query: str
@@ -227,11 +268,12 @@ class ConversationMemoryStore:
         return rows
 
     def _search_relevant_turns_fts(self, user_id: int, query: str, limit: int) -> List[Dict[str, str]]:
-        tokens = [tok for tok in query.replace("?", " ").replace("!", " ").replace(",", " ").split() if tok]
+        tokens = _query_tokens(query)
         if not tokens:
             return []
 
-        fts_query = " OR ".join(tokens)
+        # Quote terms for stable matching and avoid overly broad stop-word matches.
+        fts_query = " OR ".join(f'"{tok}"' for tok in tokens)
         with self._lock:
             with self._connect() as conn:
                 rows = conn.execute(

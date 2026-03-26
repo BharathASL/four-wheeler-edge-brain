@@ -55,6 +55,30 @@ class LlamaAdapter:
             return str(resp)
         return str(resp)
 
+    def _call_chat_model(self, messages, max_tokens: int = 128) -> str:
+        # Prefer chat-template path when llama-cpp runtime exposes it.
+        if self._llm is None:
+            raise RuntimeError("llama runtime not available")
+
+        if hasattr(self._llm, "create_chat_completion"):
+            resp = self._llm.create_chat_completion(messages=messages, max_tokens=max_tokens)
+            if isinstance(resp, dict):
+                choices = resp.get("choices") or []
+                if choices and isinstance(choices[0], dict):
+                    message = choices[0].get("message") or {}
+                    if isinstance(message, dict) and "content" in message:
+                        return str(message["content"])
+            return str(resp)
+
+        # Runtime doesn't support chat completions; degrade to plain prompt.
+        text_lines = []
+        for msg in messages:
+            role = str(msg.get("role", "user")).capitalize()
+            content = str(msg.get("content", ""))
+            text_lines.append(f"{role}: {content}")
+        text_lines.append("Assistant:")
+        return self._call_model("\n".join(text_lines), max_tokens=max_tokens)
+
     def generate(self, prompt: str, max_tokens: int = 128, timeout: Optional[float] = None) -> str:
         """Generate text from the model with an optional timeout (seconds).
 
@@ -76,6 +100,24 @@ class LlamaAdapter:
                 # Propagate runtime errors as-is
                 raise
 
+    def generate_chat(self, messages, max_tokens: int = 128, timeout: Optional[float] = None) -> str:
+        """Generate text from structured chat messages.
+
+        Uses llama-cpp chat completion API when available and falls back
+        to plain prompt generation if chat completion is unavailable.
+        """
+        if timeout is None:
+            return self._call_chat_model(messages, max_tokens=max_tokens)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            fut = ex.submit(self._call_chat_model, messages, max_tokens)
+            try:
+                return fut.result(timeout=timeout)
+            except concurrent.futures.TimeoutError:
+                raise TimeoutError("llama generate_chat() timed out")
+            except Exception:
+                raise
+
 
 class MockLlamaAdapter(LlamaAdapter):
     """Simple mock that returns deterministic responses for unit tests."""
@@ -86,6 +128,10 @@ class MockLlamaAdapter(LlamaAdapter):
     def generate(self, prompt: str, max_tokens: int = 128, timeout: Optional[float] = None) -> str:
         # Return a short deterministic reply useful for unit tests.
         return f"[mock response] echo: {prompt[:80]}"
+
+    def generate_chat(self, messages, max_tokens: int = 128, timeout: Optional[float] = None) -> str:
+        joined = " | ".join(str(m.get("content", "")) for m in messages)
+        return f"[mock chat] echo: {joined[:80]}"
 
 
 __all__ = ["LlamaAdapter", "MockLlamaAdapter"]

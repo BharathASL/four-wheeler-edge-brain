@@ -65,3 +65,21 @@ def test_search_relevant_turns_limit_zero(tmp_path):
 
     rows = store.search_relevant_turns(user_id=user_id, query="hello", limit=0)
     assert rows == []
+
+
+def test_search_relevant_turns_dinner_memory_query(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("bharath")
+    store.append_turn(user_id, "we discussed robotics milestones", "noted")
+    store.append_turn(user_id, "i had dosa for dinner", "thanks for sharing")
+
+    rows = store.search_relevant_turns(
+        user_id=user_id,
+        query="Do you remember what I had for the dinner?",
+        limit=1,
+    )
+
+    assert rows
+    assert "dinner" in rows[0]["user"].lower()
