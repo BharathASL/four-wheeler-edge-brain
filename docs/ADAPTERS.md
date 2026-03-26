@@ -76,10 +76,15 @@ DecisionEngine output schema:
 
 Known action values:
 
+- IDLE
+- MOVE
 - STOP
 - DOCK
+- ESTOP
+- RESET_ESTOP
+- OVERRIDE_ON
+- OVERRIDE_OFF
 - MODEL_SUGGESTION
-- IDLE
 
 Known IDLE reasons:
 
@@ -125,7 +130,6 @@ Phase-1 supported actions:
 - DOCK
 - OVERRIDE_ON
 - OVERRIDE_OFF
-- MODEL_SUGGESTION
 - MODEL_SUGGESTION
 
 ## State Manager Contract

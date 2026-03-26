@@ -94,15 +94,17 @@ class LlamaAdapter:
             # Direct call (may raise RuntimeError if runtime missing)
             return self._call_model(prompt, max_tokens=max_tokens)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        # Use shutdown(wait=False) so the caller is not blocked waiting for the
+        # worker thread to finish after a timeout has already been raised.
+        ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        try:
             fut = ex.submit(self._call_model, prompt, max_tokens)
             try:
                 return fut.result(timeout=timeout)
             except concurrent.futures.TimeoutError:
                 raise TimeoutError("llama generate() timed out")
-            except Exception:
-                # Propagate runtime errors as-is
-                raise
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
 
     def generate_chat(self, messages, max_tokens: int = 128, timeout: Optional[float] = None) -> str:
         """Generate text from structured chat messages.
@@ -113,14 +115,17 @@ class LlamaAdapter:
         if timeout is None:
             return self._call_chat_model(messages, max_tokens=max_tokens)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        # Use shutdown(wait=False) so the caller is not blocked waiting for the
+        # worker thread to finish after a timeout has already been raised.
+        ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        try:
             fut = ex.submit(self._call_chat_model, messages, max_tokens)
             try:
                 return fut.result(timeout=timeout)
             except concurrent.futures.TimeoutError:
                 raise TimeoutError("llama generate_chat() timed out")
-            except Exception:
-                raise
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
 
 
 class MockLlamaAdapter(LlamaAdapter):
