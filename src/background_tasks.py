@@ -8,6 +8,9 @@ import time
 from typing import Callable, Dict, Any, Optional
 
 
+from src.config import RobotConfig as _cfg
+
+
 class BatteryBackgroundTask:
     """Simulate battery drain and trigger auto-dock on low battery."""
 
@@ -15,10 +18,10 @@ class BatteryBackgroundTask:
         self,
         state_manager,
         on_auto_dock: Optional[Callable[[Dict[str, Any]], None]] = None,
-        tick_seconds: float = 1.0,
-        drain_step: int = 1,
-        charge_step: int = 2,
-        low_battery_threshold: int = 20,
+        tick_seconds: float = _cfg.BATTERY_TICK_S,
+        drain_step: int = _cfg.BATTERY_DRAIN_STEP,
+        charge_step: int = _cfg.BATTERY_CHARGE_STEP,
+        low_battery_threshold: int = _cfg.BATTERY_LOW_THRESHOLD,
     ):
         self.state = state_manager
         self.on_auto_dock = on_auto_dock
@@ -83,8 +86,8 @@ class CommandWatchdogTask:
         self,
         state_manager,
         on_watchdog_stop: Optional[Callable[[Dict[str, Any]], None]] = None,
-        timeout_seconds: float = 2.0,
-        tick_seconds: float = 0.2,
+        timeout_seconds: float = _cfg.WATCHDOG_TIMEOUT_S,
+        tick_seconds: float = _cfg.WATCHDOG_TICK_S,
     ):
         self.state = state_manager
         self.on_watchdog_stop = on_watchdog_stop

@@ -8,10 +8,11 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
+from src.config import RobotConfig as _cfg
 
-DEFAULT_LOG_DIR = Path("data/logs")
-DEFAULT_MAX_BYTES = 1_048_576
-DEFAULT_BACKUP_COUNT = 3
+DEFAULT_LOG_DIR = Path(_cfg.LOG_DIR)
+DEFAULT_MAX_BYTES = _cfg.LOG_MAX_BYTES
+DEFAULT_BACKUP_COUNT = _cfg.LOG_BACKUP_COUNT
 
 
 def _resolve_logfile(name: str, logfile: Optional[str]) -> Optional[Path]:

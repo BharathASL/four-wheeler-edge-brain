@@ -3,7 +3,6 @@
 Run `python main.py test` to run the test-suite, or run without args to start
 the simulated runtime loop.
 """
-import os
 import sys
 import time
 from pathlib import Path
@@ -14,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from src.config import RobotConfig
 from src.telemetry import init_telemetry
 
 
@@ -120,7 +120,7 @@ def simulate_loop(
     from src.action_executor import ActionExecutor
 
     logger = init_telemetry("phase1_poc")
-    model_cooldown_seconds = max(0.0, float(os.getenv("MODEL_COOLDOWN_SECONDS", "2.0")))
+    model_cooldown_seconds = max(0.0, RobotConfig.from_env().MODEL_COOLDOWN_S)
     state = StateManager()
     llama, effective_mode = _build_llama_adapter(
         model_mode=model_mode,
@@ -144,16 +144,10 @@ def simulate_loop(
     battery_task = BatteryBackgroundTask(
         state,
         on_auto_dock=enqueue_auto_action,
-        tick_seconds=1.0,
-        drain_step=1,
-        charge_step=2,
-        low_battery_threshold=20,
     )
     watchdog_task = CommandWatchdogTask(
         state,
         on_watchdog_stop=enqueue_auto_action,
-        timeout_seconds=60.0,
-        tick_seconds=0.5,
     )
 
     try:
@@ -239,7 +233,7 @@ def chat_loop(
     from src.semantic_memory import SemanticMemoryIndex
 
     logger = init_telemetry("phase1_chat")
-    model_cooldown_seconds = max(0.0, float(os.getenv("MODEL_COOLDOWN_SECONDS", "2.0")))
+    model_cooldown_seconds = max(0.0, RobotConfig.from_env().MODEL_COOLDOWN_S)
     normalized_retrieval_mode = (retrieval_mode or "fts").strip().lower()
     if normalized_retrieval_mode not in {"fts", "semantic", "hybrid"}:
         logger.warning("Unknown retrieval mode=%s; falling back to fts", retrieval_mode)
@@ -346,20 +340,17 @@ def main():
         strict_model = "--strict-model" in sys.argv
         chat_mode = "--chat-mode" in sys.argv
 
-        env_mode = os.getenv("MODEL_MODE", "mock")
-        env_model_path = os.getenv("MODEL_PATH", "")
-        env_lib_path = os.getenv("LLAMA_LIB_PATH", "")
-        env_memory_db_path = os.getenv("MEMORY_DB_PATH", "data/conversations.sqlite")
+        cfg = RobotConfig.from_env()
 
-        cli_mode = env_mode
-        cli_model_path = env_model_path
-        cli_lib_path = env_lib_path
-        cli_history_turns = 4
-        cli_retrieval_turns = 3
+        cli_mode = cfg.MODEL_MODE
+        cli_model_path = cfg.MODEL_PATH
+        cli_lib_path = cfg.LLAMA_LIB_PATH
+        cli_history_turns = cfg.CHAT_HISTORY_TURNS
+        cli_retrieval_turns = cfg.RETRIEVAL_TURNS
         cli_benchmark_memory_retrieval = False
-        cli_memory_db_path = env_memory_db_path
-        cli_retrieval_mode = os.getenv("MEMORY_RETRIEVAL_MODE", "fts")
-        cli_semantic_backend = os.getenv("SEMANTIC_BACKEND", "auto")
+        cli_memory_db_path = cfg.MEMORY_DB_PATH
+        cli_retrieval_mode = cfg.MEMORY_RETRIEVAL_MODE
+        cli_semantic_backend = cfg.SEMANTIC_BACKEND
 
         for idx, token in enumerate(sys.argv):
             if token == "--model-mode" and idx + 1 < len(sys.argv):

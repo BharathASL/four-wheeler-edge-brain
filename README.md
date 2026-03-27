@@ -44,6 +44,24 @@ Model mode selection:
 
 - Default mode is mock (safe for WSL/dev)
 - Real llama-cpp mode can be enabled with env vars or CLI flags
+- All runtime defaults live in [`src/config.py`](src/config.py) (`RobotConfig`)
+
+Environment variables (all read once at startup via `RobotConfig.from_env()`):
+
+| Variable | Default | Description |
+|---|---|---|
+| `MODEL_MODE` | `mock` | `mock` or `real` |
+| `MODEL_PATH` | _(empty)_ | Path to `.gguf` model file (required for `real` mode) |
+| `LLAMA_LIB_PATH` | _(empty)_ | Optional path to compiled `libllama.so` |
+| `MEMORY_DB_PATH` | `data/conversations.sqlite` | SQLite conversation store |
+| `MEMORY_RETRIEVAL_MODE` | `fts` | `fts`, `semantic`, or `hybrid` |
+| `SEMANTIC_BACKEND` | `auto` | `auto`, `in-memory`, or `faiss` |
+| `MODEL_COOLDOWN_SECONDS` | `2.0` | Seconds between model calls |
+| `MODEL_TIMEOUT_S` | `5.0` | Model generation timeout (seconds) |
+| `TELEMETRY_LOG_DIR` | `data/logs` | Rotating log output directory |
+| `TELEMETRY_LOG_MAX_BYTES` | `1048576` | Max log file size before rotation |
+| `TELEMETRY_LOG_BACKUP_COUNT` | `3` | Number of backup log files |
+| `TELEMETRY_DISABLE_FILE_LOGGING` | `0` | Set to `1`, `true`, or `yes` to disable file logs |
 
 Environment-variable example:
 

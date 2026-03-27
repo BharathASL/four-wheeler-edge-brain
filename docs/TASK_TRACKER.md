@@ -48,7 +48,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Implement State Manager (simulated robot state) | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P0 | None | Thread-safe state and safety fields |
 | Implement Input Listener (always-on loop) | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P0 | None | Dedicated listener module added |
 | Create Phase-1 PoC skeleton (simulated loop) | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P0 | None | Main simulation loop functional |
-| Add central config management (src/config.py or config.yaml) | Phase 1 - Edge Brain (PoC) | 🟡 To do | P1 | None | Consolidate scattered env-var constants (speeds, timeouts, depths) into one place |
+| Add central config management (src/config.py or config.yaml) | Phase 1 - Edge Brain (PoC) | ✅ Done | P1 | None | Consolidated scattered env-var constants into src/config.py (RobotConfig dataclass + from_env()) — PR: feature/phase1-central-config-management |
 | Design HTTP/REST API stub for remote command and state query | Phase 1 - Edge Brain (PoC) | 🟡 To do | P1 | None | Architecture doc calls for it; required for Phase 8 remote management |
 | Design conversation state machine for multi-step dialogues | Phase 1 - Edge Brain (PoC) | 🟡 To do | P2 | None | Enable goal sequences (go to kitchen → pick up → return) beyond one-shot commands |
 | Add unknown-command confirmation flow (safe ACTION:IDLE) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Unknown commands now map to safe IDLE |
@@ -191,7 +191,7 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ## Top Next Actions
 
-1. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
+1. ✅ Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1). **Done** — `src/config.py` introduced.
 2. 🟡 Design HTTP/REST API stub for remote command and state query (P1 — Phase 1).
 3. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
 4. 🟡 Define Phase 1.2 exit criteria (inference running, motors responding to commands) before hardware bring-up closure (P0 — Phase 1.2).
