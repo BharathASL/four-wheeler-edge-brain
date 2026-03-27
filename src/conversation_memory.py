@@ -105,6 +105,7 @@ class ConversationMemoryStore:
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        self._semantic_lock = threading.Lock()
         self._fts_enabled = False
         self._semantic_index = semantic_index
         self._default_retrieval_mode = self._normalize_retrieval_mode(default_retrieval_mode)
@@ -217,12 +218,13 @@ class ConversationMemoryStore:
                 conn.commit()
 
         if self._semantic_index is not None:
-            self._semantic_index.add_turn(
-                turn_id=int(cursor.lastrowid),
-                user_id=user_id,
-                user_text=user_text,
-                assistant_text=assistant_text,
-            )
+            with self._semantic_lock:
+                self._semantic_index.add_turn(
+                    turn_id=int(cursor.lastrowid),
+                    user_id=user_id,
+                    user_text=user_text,
+                    assistant_text=assistant_text,
+                )
 
     def get_recent_turns(self, user_id: int, limit: int = 6) -> List[Dict[str, str]]:
         if limit <= 0:
@@ -306,41 +308,95 @@ class ConversationMemoryStore:
         if self._semantic_index is None:
             return
 
+        with self._semantic_lock:
+            min_id = self._semantic_index.max_indexed_turn_id + 1
+
         with self._lock:
             with self._connect() as conn:
                 rows = conn.execute(
                     """
                     SELECT id, user_id, user_text, assistant_text
                     FROM conversation_turns
+                    WHERE id >= ?
                     ORDER BY id ASC
-                    """
+                    """,
+                    (min_id,),
                 ).fetchall()
 
-        for row in rows:
-            self._semantic_index.add_turn(
-                turn_id=int(row[0]),
-                user_id=int(row[1]),
-                user_text=str(row[2]),
-                assistant_text=str(row[3]),
-            )
+        if not rows:
+            return
+
+        turns = [
+            (int(row[0]), int(row[1]), str(row[2]), str(row[3]))
+            for row in rows
+        ]
+        with self._semantic_lock:
+            self._semantic_index.add_turns_batch(turns)
 
     def _search_relevant_turns_semantic(self, user_id: int, query: str, limit: int) -> List[Dict[str, str]]:
         if self._semantic_index is None:
             return []
 
-        matches = self._semantic_index.search(query=query, user_id=user_id, limit=limit)
+        with self._semantic_lock:
+            matches = self._semantic_index.search(query=query, user_id=user_id, limit=limit)
         return [
             {"user": match.user_text, "assistant": match.assistant_text}
             for match in matches
         ]
 
     def _search_relevant_turns_hybrid(self, user_id: int, query: str, limit: int) -> Tuple[List[Dict[str, str]], bool]:
-        semantic_rows = self._search_relevant_turns_semantic(user_id=user_id, query=query, limit=limit)
-        if semantic_rows:
-            return semantic_rows, False
+        """Hybrid retrieval: use semantic search as the primary signal, and backfill with
+        FTS/LIKE results to reach `limit` rows when semantic returns a partial set.
+        The returned boolean indicates whether an FTS/LIKE lookup was used.
+        """
+        # First, run semantic search.
+        semantic_rows = self._search_relevant_turns_semantic(
+            user_id=user_id,
+            query=query,
+            limit=limit,
+        )
+
+        # If semantic alone satisfies the limit, return it.
+        if len(semantic_rows) >= limit:
+            return semantic_rows[:limit], False
+
+        # Backfill using FTS or LIKE to reach the requested limit.
+        remaining = limit - len(semantic_rows)
         if self._fts_enabled:
-            return self._search_relevant_turns_fts(user_id=user_id, query=query, limit=limit), True
-        return self._search_relevant_turns_like(user_id=user_id, query=query, limit=limit), False
+            fallback_rows = self._search_relevant_turns_fts(
+                user_id=user_id,
+                query=query,
+                limit=remaining,
+            )
+        else:
+            fallback_rows = self._search_relevant_turns_like(
+                user_id=user_id,
+                query=query,
+                limit=remaining,
+            )
+
+        # Merge semantic and fallback rows, deduplicating by (user, assistant) pair.
+        seen: set = set()
+        merged: List[Dict[str, str]] = []
+
+        for row in semantic_rows:
+            key = (row.get("user"), row.get("assistant"))
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(row)
+
+        for row in fallback_rows:
+            key = (row.get("user"), row.get("assistant"))
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(row)
+            if len(merged) >= limit:
+                break
+
+        used_fts = len(fallback_rows) > 0
+        return merged, used_fts
 
     def _search_relevant_turns_fts(self, user_id: int, query: str, limit: int) -> List[Dict[str, str]]:
         tokens = _query_tokens(query)

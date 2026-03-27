@@ -171,10 +171,16 @@ class SemanticMemoryIndex:
     ):
         self.encoder = encoder or HashingSemanticEncoder()
         self.backend = backend or create_semantic_backend(self.encoder.dimensions, prefer_faiss=prefer_faiss)
+        self._max_turn_id: int = -1
 
     @property
     def backend_name(self) -> str:
         return str(getattr(self.backend, "name", "unknown"))
+
+    @property
+    def max_indexed_turn_id(self) -> int:
+        """Return the highest turn_id that has been added to this index, or -1 if empty."""
+        return self._max_turn_id
 
     def add_turn(self, turn_id: int, user_id: int, user_text: str, assistant_text: str) -> bool:
         payload = f"{user_text}\n{assistant_text}".strip()
@@ -195,7 +201,47 @@ class SemanticMemoryIndex:
                 )
             ]
         )
+        if turn_id > self._max_turn_id:
+            self._max_turn_id = turn_id
         return True
+
+    def add_turns_batch(
+        self,
+        turns: Sequence[Tuple[int, int, str, str]],
+        batch_size: int = 64,
+    ) -> int:
+        """Encode and index a batch of turns efficiently.
+
+        Each entry in *turns* is ``(turn_id, user_id, user_text, assistant_text)``.
+        Returns the number of turns successfully indexed.
+        """
+        added = 0
+        for offset in range(0, len(turns), batch_size):
+            chunk = turns[offset : offset + batch_size]
+            payloads = [f"{u}\n{a}".strip() for _, _, u, a in chunk]
+            vectors = self.encoder.encode(payloads)
+            items: List[Tuple[Sequence[float], SemanticMatch]] = []
+            for (turn_id, user_id, user_text, assistant_text), vector in zip(chunk, vectors):
+                if not any(vector):
+                    continue
+                items.append(
+                    (
+                        vector,
+                        SemanticMatch(
+                            turn_id=turn_id,
+                            user_id=user_id,
+                            score=1.0,
+                            user_text=user_text,
+                            assistant_text=assistant_text,
+                        ),
+                    )
+                )
+                if turn_id > self._max_turn_id:
+                    self._max_turn_id = turn_id
+            if items:
+                self.backend.add(items)
+                added += len(items)
+        return added
 
     def search(self, query: str, user_id: int, limit: int = 4) -> List[SemanticMatch]:
         normalized_query = (query or "").strip()
@@ -213,4 +259,5 @@ __all__ = [
     "SemanticMatch",
     "SemanticMemoryIndex",
     "create_semantic_backend",
+    "FaissSemanticBackend",
 ]

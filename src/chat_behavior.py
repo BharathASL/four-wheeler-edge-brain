@@ -713,9 +713,6 @@ def _generate_chat_reply_result(
     if deterministic_personal:
         return deterministic_personal, "rule"
 
-    if intent == "memory_generic" and is_question(user_text):
-        return memory_question_response(user_text, speaker_name, known_facts), "rule"
-
     if is_personal_fact_statement(user_text):
         return grounded_fallback_reply(user_text, speaker_name, known_facts), "rule"
 
