@@ -129,6 +129,17 @@ main() {
 
   echo
   echo "Summary: PASS=$PASS_COUNT FAIL=$FAIL_COUNT"
+
+  # Gate summary — maps to Phase 1.2 objective exit criteria in HARDWARE_BRINGUP.md
+  echo
+  echo "== Phase 1.2 Gate Summary =="
+  echo "PHASE1_2_GATE_A_ENV=$(      [[ $FAIL_COUNT -eq 0 ]] && echo PASS || echo FAIL )"
+  echo "PHASE1_2_GATE_B_TESTS=$(    [[ $FAIL_COUNT -eq 0 ]] && echo PASS || echo FAIL )"
+  echo "PHASE1_2_GATE_C_INFERENCE=$(python -c 'import os; p=os.environ.get("MODEL_PATH",""); print("PASS" if p and __import__("os").path.isfile(p) else "SKIP")' 2>/dev/null || echo SKIP)"
+  echo "PHASE1_2_GATE_D_DECISION=REQUIRES_MANUAL_CHECK"
+  echo "PHASE1_2_GATE_E_SAFETY=REQUIRES_MANUAL_CHECK"
+  echo "PHASE1_2_GATE_F_RESOURCES=SEE_SNAPSHOT_ABOVE"
+
   if [[ $FAIL_COUNT -eq 0 ]]; then
     echo -e "${GREEN}Overall: PASS${NC}"
     exit 0
