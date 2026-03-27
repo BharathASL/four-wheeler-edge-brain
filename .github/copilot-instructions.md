@@ -63,6 +63,8 @@ Development on WSL2 / WSLg (Ubuntu 24.04)
 - Create virtualenv and install `requirements.txt`.
 - Mock or skip ARM-only native calls; provide a `mocks/` adapter for local testing.
 - Keep development inside the Ubuntu 24.04 WSL environment; do not rely on native Windows Python support.
+- When using a persistent VS Code terminal session, verify the shell context once and then reuse it. Do not keep prepending `cd <repo>` and virtualenv activation commands if `pwd` is already the repository root and the repository virtualenv is already active.
+- Only repeat `cd` or virtualenv activation when starting a fresh shell, running a background process that spawns a new shell, or when the current terminal state is unknown.
 
 Production on Raspberry Pi 5
 - Use Ubuntu Server 24.04 64‑bit.

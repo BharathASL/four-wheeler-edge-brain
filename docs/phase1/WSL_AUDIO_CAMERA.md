@@ -2,6 +2,8 @@
 
 Notes to help develop on Windows using WSL2/WSLg and to mirror Pi behavior.
 
+For the concrete pre-hardware validation procedure for the current Blue Yeti, Windows speaker, and Android phone workflow, use `docs/phase1/WSL_DEV_DEVICE_VALIDATION.md`.
+
 ## One-time WSL bootstrap
 
 Use the repository bootstrap script on a fresh Ubuntu-based WSL instance:
@@ -23,6 +25,7 @@ bash scripts/setup_wsl_dev.sh --venv-path .venv-wsl --run-smoke-test
 What the script does:
 
 - installs required Ubuntu packages for Python builds, audio tooling, and basic camera utilities
+- configures a default ALSA-to-WSLg PulseAudio route for the current user when no `~/.asoundrc` exists yet
 - creates a project virtual environment
 - upgrades pip/setuptools/wheel
 - installs `requirements.txt`
@@ -43,6 +46,7 @@ usbipd wsl attach --busid <busid>
 
 Development note:
 - If an Android phone is used as a USB webcam for Windows, treat that as a development convenience path and verify first that WSL sees it as a normal video device before planning around it. Windows camera availability alone is not sufficient; WSL still needs a usable `/dev/video*` device or another explicit frame bridge.
+- In this project environment, Android camera validation passed via DroidCam network stream from WSL. Treat this as the preferred pre-hardware dev camera workflow, with USBIP webcam attach as an optional advanced path.
 
 ## Audio (WSLg / PulseAudio)
 
@@ -52,6 +56,7 @@ Development note:
 Development note:
 - A Windows-connected speaker is a reasonable development target for the current pyttsx3 path, but confirm playback end to end from WSL before relying on it for TTS debugging.
 - A Blue Yeti microphone is a reasonable development target for STT and input-listener experiments, but confirm that the chosen WSL audio input path exposes the microphone to Linux-side capture libraries before treating it as the default dev setup.
+- In WSLg, these audio paths generally follow the Windows default or forwarded input/output devices rather than exposing stable hardware-specific identities inside Linux. A Windows default-device change should usually carry through to WSL without repo code changes.
 
 ## Suggested Pre-Hardware Validation
 
@@ -61,6 +66,8 @@ Before buying Pi-side audio and camera hardware, validate the current Windows-ho
 2. Confirm Blue Yeti microphone capture works from the WSL development environment.
 3. Confirm the Android phone camera path appears as a usable WSL capture device or identify the bridge required.
 4. Only after those checks pass, document the approved development workflow for speech and camera testing.
+
+Use `docs/phase1/WSL_DEV_DEVICE_VALIDATION.md` as the execution runbook for those checks. Keep the final approved workflow development-only and separate from the eventual Raspberry Pi production path.
 
 ## Tips
 

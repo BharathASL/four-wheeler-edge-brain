@@ -24,6 +24,9 @@ APT_PACKAGES=(
     libopenblas-dev
     portaudio19-dev
     libsndfile1
+    alsa-utils
+    pulseaudio-utils
+    libasound2-plugins
     espeak-ng
     ffmpeg
     v4l-utils
@@ -159,6 +162,29 @@ install_python_packages() {
     run_cmd "$pip_bin" install -r "$REPO_ROOT/requirements.txt"
 }
 
+configure_wsl_audio() {
+    if ! is_wsl; then
+        return 0
+    fi
+
+    local asoundrc="$HOME/.asoundrc"
+    if [[ -f "$asoundrc" ]]; then
+        log "Existing ALSA config detected at $asoundrc; leaving it unchanged"
+        return 0
+    fi
+
+    log "Configuring ALSA default device to use WSLg PulseAudio"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[dry-run] write %s with WSLg PulseAudio defaults\n' "$asoundrc"
+        return 0
+    fi
+
+    cat > "$asoundrc" <<'EOF'
+pcm.!default pulse
+ctl.!default pulse
+EOF
+}
+
 run_smoke_test() {
     if [[ "$RUN_SMOKE_TEST" -ne 1 ]]; then
         return 0
@@ -232,5 +258,6 @@ fi
 install_system_packages
 create_venv
 install_python_packages
+configure_wsl_audio
 run_smoke_test
 write_activation_hint

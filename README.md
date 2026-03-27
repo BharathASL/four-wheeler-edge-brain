@@ -144,4 +144,6 @@ See `docs/` for architecture and roadmap details.
 
 WSL-specific setup and audio/camera notes live in `docs/phase1/WSL_AUDIO_CAMERA.md`.
 
+For the concrete pre-hardware validation workflow for the current Blue Yeti microphone, Windows-connected speaker, and Android phone camera path, see `docs/phase1/WSL_DEV_DEVICE_VALIDATION.md`.
+
 Project task tracking is maintained in `docs/TASK_TRACKER.md`.
