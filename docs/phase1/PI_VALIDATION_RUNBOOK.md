@@ -154,6 +154,46 @@ Fill this table after each run:
 |---|---|---|---:|---:|---|---|---|
 | YYYY-MM-DD | Pi 4 4GB | q4 | 24 |  |  |  | PASS/FAIL |
 
+## Gate Mapping (Phase 1.2 Exit Criteria)
+
+Map each test in this runbook to the objective Phase 1.2 gates defined in
+`docs/phase1_2/HARDWARE_BRINGUP.md`.
+
+- Gate A (Environment And Install):
+  - Environment setup and dependency install steps in this runbook.
+- Gate B (Software Baseline):
+  - Test 1 (`pytest -q`).
+- Gate C (Inference Runtime):
+  - Test 2 (runtime load + single inference).
+- Gate D (Decision Path Integration):
+  - Test 3 (DecisionEngine integration).
+- Gate E (Safety Path - Software):
+  - Validate with simulation-safe command transcript (STOP/ESTOP/RESET_ESTOP)
+    from `python main.py` session.
+- Gate F (Resource Snapshot):
+  - Test 4 (memory and thermals spot check).
+- Conditional Motor Gate (when hardware is available):
+  - Not fully covered by this runbook until motor hardware and backend are ready.
+
+## Evidence To Archive
+
+For each validation run, archive the following artifacts:
+
+- Setup log:
+  - Virtualenv creation/activation and dependency install output.
+- Test output:
+  - `pytest -q` summary.
+- Inference output:
+  - `OUTPUT:` and `LATENCY_SEC:` lines from Test 2.
+- Decision integration output:
+  - returned dict payload from Test 3.
+- Resource snapshot:
+  - `free -h`, `vcgencmd measure_temp` (if available), and `top` excerpt.
+- Optional script summary:
+  - output block from `scripts/phase1_validate_pi.sh` when used.
+
+Store these with date, device identifier, and model quantization label.
+
 ## Troubleshooting
 
 - Runtime unavailable:
@@ -165,9 +205,17 @@ Fill this table after each run:
 - Thermal throttling:
   - Improve cooling and rerun with reduced load.
 
-## Exit Criteria for Phase-1 Hardware Validation
+## Exit Criteria Decision States
 
-- Unit tests pass on Pi.
-- At least one successful real inference with recorded latency.
-- DecisionEngine integration run completes without runtime error.
-- Basic memory/thermal observations are captured.
+Use the following outcome labels for this runbook execution:
+
+- PASS:
+  - Gates A through F are satisfied and evidence is archived.
+- PARTIAL:
+  - Some required gates fail, but enough evidence is captured to diagnose
+    blockers (for example, inference runtime missing while baseline tests pass).
+- FAIL:
+  - Early setup/runtime failure prevents meaningful gate evaluation.
+
+Phase 1.2 should only be closed when this runbook results in PASS and the
+objective phase-close rule in `docs/phase1_2/HARDWARE_BRINGUP.md` is met.

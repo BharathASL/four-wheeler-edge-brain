@@ -154,7 +154,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Build and validate llama.cpp on ARM (complete TINYLLAMA_SETUP.md build steps) | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Raspberry Pi hardware | TINYLLAMA_SETUP.md has placeholder; fill in concrete ARM build commands |
 | Implement src/motor_adapter.py stub (real + mock, following adapter pattern) | Phase 1.2 - Pi Hardware Bring-up | 🟡 To do | P0 | Motor HAT selection | Extend established adapter pattern; enables unit testing before hardware |
 | Wire up motors and verify GPIO/PWM signals with basic spin test | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Motor hardware + motor_adapter.py | First physical movement validation |
-| Define Phase 1.2 exit criteria (inference running, motors responding to commands) | Phase 1.2 - Pi Hardware Bring-up | 🟡 To do | P0 | None | Written acceptance criteria needed before phase can be closed |
+| Define Phase 1.2 exit criteria (inference running, motors responding to commands) | Phase 1.2 - Pi Hardware Bring-up | � Done (Documented) | P0 | None | Objective gates A–F (+ conditional motor gate) defined in `docs/phase1_2/HARDWARE_BRINGUP.md`; mapped to runbook tests and PASS/PARTIAL/FAIL outcome states in `docs/phase1/PI_VALIDATION_RUNBOOK.md`; gate summary block added to `scripts/phase1_validate_pi.sh` (`feature/phase1-2-exit-criteria`) |
 
 ## Phase 2.1 — Sensor Integration
 
@@ -193,8 +193,8 @@ This file is the source of truth for planning and progress tracking in the repos
 
 1. ✅ Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1). **Done** — `src/config.py` introduced.
 2. ✅ Design HTTP/REST API stub for remote command and state query (P1 — Phase 1). **Done** — local API endpoints and runtime wiring are implemented.
-3. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
-4. 🟡 Define Phase 1.2 exit criteria (inference running, motors responding to commands) before hardware bring-up closure (P0 — Phase 1.2).
+3. ✅ Define Phase 1.2 exit criteria before hardware bring-up closure (P0 — Phase 1.2). **Done** — objective gates documented in `HARDWARE_BRINGUP.md` and mapped in `PI_VALIDATION_RUNBOOK.md`.
+4. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
 5. 🔵 Continue Phase 8 HTTP API implementation (auth hardening + operational endpoints) now that the stub exists (P1 — Phase 8).
 
 ---

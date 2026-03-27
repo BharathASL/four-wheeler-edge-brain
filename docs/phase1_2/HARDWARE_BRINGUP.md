@@ -267,6 +267,89 @@ Before live motor actuation:
 - Safe stop procedure defined.
 - Wheels unloaded or robot physically restrained for initial tests.
 
+## Phase 1.2 Exit Criteria (Objective Gate)
+
+Phase 1.2 should only be marked complete when all required gates below pass and
+the evidence artifacts are captured.
+
+### Gate A - Environment And Install
+
+Pass when all are true:
+- Pi provisioning is complete (OS, hostname/user/SSH/network).
+- Repository is cloned on Pi.
+- Virtualenv activation succeeds.
+- `pip install -r requirements.txt` succeeds.
+
+Evidence:
+- Setup command transcript and final successful command outputs.
+
+### Gate B - Software Baseline
+
+Pass when all are true:
+- `pytest -q` runs on Pi and exits with code 0.
+
+Evidence:
+- Pytest summary output stored in run log.
+
+### Gate C - Inference Runtime
+
+Pass when all are true:
+- Runtime/model load path succeeds using the runbook inference check.
+- At least one real inference completes with non-empty output.
+- Latency for that run is recorded.
+
+Evidence:
+- Inference script output including `OUTPUT:` and `LATENCY_SEC:`.
+
+### Gate D - Decision Path Integration
+
+Pass when all are true:
+- DecisionEngine integration check returns a dict.
+- Result contains both `action` and `params` keys.
+- No native runtime crash occurs in this path.
+
+Evidence:
+- Decision integration command output and returned dict payload.
+
+### Gate E - Safety Path (Software)
+
+Pass when all are true:
+- STOP/ESTOP software behavior is validated in simulation-safe path.
+- ESTOP reset behavior is confirmed (`RESET_ESTOP` required before movement).
+
+Evidence:
+- Command transcript showing expected ESTOP latch and reset semantics.
+
+### Gate F - Resource Snapshot
+
+Pass when all are true:
+- Memory snapshot captured (`free -h`).
+- CPU/temperature snapshot captured (`vcgencmd measure_temp` when available).
+- Basic process snapshot captured (`top -b -n1 | head -n 20`).
+
+Evidence:
+- Snapshot outputs archived with timestamp.
+
+### Conditional Motor Gate (When Hardware Is Available)
+
+This gate is required to close full hardware bring-up once motor hardware exists,
+but it is not applicable while motor tasks remain hardware-blocked.
+
+Pass when all are true:
+- Motor board/HAT is selected and documented.
+- Backend implementation is present for `PWMMotorAdapter`.
+- Basic unloaded spin/stop tests are successful with safe stop procedure in place.
+
+Evidence:
+- Backend test logs, wiring notes, and unloaded spin validation record.
+
+### Phase-Close Rule
+
+Mark `Phase 1.2` as complete only when:
+- Gates A through F are PASS, and
+- Conditional Motor Gate is PASS when hardware is available, and
+- Evidence artifacts are recorded in the runbook result log.
+
 ## Failure, Rollback, And Safety Notes
 
 Safety expectations for Phase 1.2:
@@ -303,9 +386,9 @@ The following work is explicitly deferred:
 - Movement calibration and any closed-loop motor control.
 - Phase 1.2 exit validation that requires the Pi and motors responding together.
 
-## Exit Criteria For This Documented Bring-Up Step
+## Document Maintenance Criteria
 
-This document is complete when:
+This document itself is considered up-to-date when:
 - The repository setup path is clear for a new Pi.
 - The current implementation boundaries are explicit.
 - The transition path from simulation to hardware is staged and reversible.
