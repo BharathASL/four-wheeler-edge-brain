@@ -302,6 +302,7 @@ def chat_loop(
                 retrieval_mode=normalized_retrieval_mode,
             )
             relevant_old = dedupe_relevant_turns(recent, relevant_old)
+            saved_slots = memory_store.get_all_slots(speaker_id)
 
             try:
                 cleaned_reply, reply_source = generate_chat_reply_with_source(
@@ -312,6 +313,7 @@ def chat_loop(
                     relevant_old,
                     max_tokens=max_tokens,
                     model_rate_limiter=model_rate_limiter,
+                    memory_slots=saved_slots,
                 )
                 print(f"assistant[{reply_source}]>", cleaned_reply)
                 if cleaned_reply != MODEL_COOLDOWN_REPLY:

@@ -13,6 +13,9 @@ class ActionExecutor:
         self.adapters = hardware_adapters or {}
         self.state = state_manager
 
+    def _motor_adapter(self):
+        return self.adapters.get("motor")
+
     def _state_snapshot(self) -> Dict[str, Any]:
         if self.state is None:
             return {}
@@ -56,6 +59,9 @@ class ActionExecutor:
 
         # Simulation-mode actions
         if name == "STOP":
+            motor = self._motor_adapter()
+            if motor is not None:
+                motor.stop()
             return {"status": "ok", "info": "stopped"}
         if name == "IDLE":
             self._state_update(is_idle=True)
@@ -65,8 +71,25 @@ class ActionExecutor:
         if name == "MOVE":
             safe_action = clamp_movement_action(action, snap)
             if safe_action.get("action") == "STOP":
+                motor = self._motor_adapter()
+                if motor is not None:
+                    motor.stop()
                 return {"status": "ok", "info": "stopped-by-safety", "safety": safe_action.get("params", {})}
             safe_params = safe_action.get("params", {})
+            motor = self._motor_adapter()
+            if motor is not None:
+                motor.set_motion(
+                    linear_mps=safe_params.get("linear_mps", 0.0),
+                    angular_dps=safe_params.get("angular_dps", 0.0),
+                )
+                return {
+                    "status": "ok",
+                    "info": "moving-adapter",
+                    "params": {
+                        "linear_mps": safe_params.get("linear_mps", 0.0),
+                        "angular_dps": safe_params.get("angular_dps", 0.0),
+                    },
+                }
             return {
                 "status": "ok",
                 "info": "moving-simulated",

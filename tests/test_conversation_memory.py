@@ -260,3 +260,103 @@ def test_hybrid_mode_metrics_marks_text_fallback_as_used_even_without_matches(tm
     assert rows
     summary = recorder.summary()
     assert summary["fts_usage_ratio"] == 1.0
+
+
+def test_append_turn_stores_multiple_structured_slots(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("bharath")
+    store.append_turn(
+        user_id,
+        "I have a dog named Pixel, I live in Bangalore, and I like Python programming.",
+        "noted",
+    )
+
+    assert store.get_all_slots(user_id) == {
+        "pet_name": "Pixel",
+        "city": "Bangalore",
+        "programming_language": "Python",
+    }
+
+
+def test_append_turn_applies_explicit_slot_correction(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(user_id, "My favorite color is blue.", "noted")
+    store.append_turn(user_id, "Actually, change it to black.", "updated")
+
+    assert store.get_slot(user_id, "favorite_color") == "black"
+
+
+def test_append_turn_does_not_store_session_directives_as_slots(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(user_id, "Always respond in one sentence.", "okay")
+
+    assert store.get_all_slots(user_id) == {}
+
+
+def test_append_turn_stores_remembered_number_slot(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(user_id, "Remember this number: 4829317", "noted")
+
+    assert store.get_slot(user_id, "remembered_number") == "4829317"
+
+
+def test_append_turn_stores_food_preference_slot(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(user_id, "I like dosa on weekends.", "noted")
+
+    assert store.get_slot(user_id, "favorite_food") == "dosa"
+
+
+def test_append_turn_rejects_unsafe_multi_speaker_slot_storage(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(
+        user_id,
+        "User1: My name is Arun and I like chess. User2: My name is Priya and I like music.",
+        "ignored",
+    )
+
+    assert store.get_all_slots(user_id) == {}
+
+
+def test_append_turn_stores_name_and_project_in_separate_slots(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("bharath")
+    store.append_turn(
+        user_id,
+        "My name is Bharath and I am building a robot with 4 wheels. Remember this for future conversations.",
+        "noted",
+    )
+
+    assert store.get_all_slots(user_id) == {
+        "name": "Bharath",
+        "project_summary": "a robot with 4 wheels",
+    }
+
+
+def test_append_turn_stores_enjoy_eating_food_preference_slot(tmp_path):
+    db_path = tmp_path / "memory.sqlite"
+    store = ConversationMemoryStore(str(db_path))
+
+    user_id, _ = store.get_or_create_user("alex")
+    store.append_turn(user_id, "I enjoy eating dosa on weekends.", "noted")
+
+    assert store.get_slot(user_id, "favorite_food") == "dosa"

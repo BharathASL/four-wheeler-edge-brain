@@ -30,6 +30,16 @@ def test_move_blocked_when_proximity_is_too_close():
     assert result["info"] == "stopped-by-safety"
 
 
+def test_move_stays_simulated_without_motor_adapter():
+    state = StateManager()
+    executor = ActionExecutor(state_manager=state)
+
+    result = executor.execute({"action": "MOVE", "params": {"linear_mps": 0.2, "angular_dps": 5.0}})
+
+    assert result["status"] == "ok"
+    assert result["info"] == "moving-simulated"
+
+
 def test_estop_latch_blocks_actions_until_reset():
     state = StateManager()
     executor = ActionExecutor(state_manager=state)
