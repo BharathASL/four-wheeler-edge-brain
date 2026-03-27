@@ -204,6 +204,7 @@ This file is the source of truth for planning and progress tracking in the repos
 |---|---|---|---|---|---|
 | Restructure src/ from flat layout into subpackages | Infrastructure | ✅ Done (Implemented) | P1 | None | Moved 18 modules into `src/adapters/`, `src/core/`, `src/memory/`, `src/api/`, `src/io/`; all imports updated; 175 tests passing (`feature/code-structure-cleanup`) |
 | Remove accidentally committed research notes from repo root | Infrastructure | ✅ Done (Implemented) | P2 | None | Deleted `chaatgpt-report.md` and `gemini-response` from root; were never committed so removed from working tree |
+| Remove .notices/ folder | Infrastructure | ✅ Done (Implemented) | P2 | None | Custom notice board folder removed; content tracked in `TASK_TRACKER.md` and `git log` instead |
 
 ---
 
