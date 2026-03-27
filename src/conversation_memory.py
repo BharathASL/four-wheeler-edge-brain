@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
+from src.memory_slots import MemorySlot, extract_slots_from_input
 from src.semantic_memory import SemanticMemoryIndex
 
 
@@ -145,6 +146,24 @@ class ConversationMemoryStore:
                     ON conversation_turns(user_id, id)
                     """
                 )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS slots (
+                        user_id INTEGER NOT NULL,
+                        slot_name TEXT NOT NULL,
+                        value TEXT NOT NULL,
+                        updated_at REAL NOT NULL,
+                        PRIMARY KEY(user_id, slot_name),
+                        FOREIGN KEY(user_id) REFERENCES users(id)
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_slots_user_id_updated_at
+                    ON slots(user_id, updated_at DESC)
+                    """
+                )
 
                 # Use FTS5 when available for scalable long-history recall.
                 try:
@@ -198,6 +217,7 @@ class ConversationMemoryStore:
                 return int(cursor.lastrowid), True
 
     def append_turn(self, user_id: int, user_text: str, assistant_text: str) -> None:
+        turn_id = -1
         with self._lock:
             with self._connect() as conn:
                 cursor = conn.execute(
@@ -207,24 +227,85 @@ class ConversationMemoryStore:
                     """,
                     (user_id, user_text, assistant_text, time.time()),
                 )
+                turn_id = int(cursor.lastrowid)
                 if self._fts_enabled:
                     conn.execute(
                         """
                         INSERT INTO conversation_turns_fts(user_id, turn_id, user_text, assistant_text)
                         VALUES(?, ?, ?, ?)
                         """,
-                        (user_id, int(cursor.lastrowid), user_text, assistant_text),
+                        (user_id, turn_id, user_text, assistant_text),
                     )
                 conn.commit()
+
+        existing_slots = self._get_slot_records(user_id)
+        extracted_slots = extract_slots_from_input(user_text, existing_slots=existing_slots)
+        if extracted_slots:
+            self.store_slots(user_id, extracted_slots)
 
         if self._semantic_index is not None:
             with self._semantic_lock:
                 self._semantic_index.add_turn(
-                    turn_id=int(cursor.lastrowid),
+                    turn_id=turn_id,
                     user_id=user_id,
                     user_text=user_text,
                     assistant_text=assistant_text,
                 )
+
+    def store_slots(self, user_id: int, slots: List[MemorySlot]) -> None:
+        if not slots:
+            return
+
+        with self._lock:
+            with self._connect() as conn:
+                for slot in slots:
+                    conn.execute(
+                        """
+                        INSERT INTO slots(user_id, slot_name, value, updated_at)
+                        VALUES(?, ?, ?, ?)
+                        ON CONFLICT(user_id, slot_name) DO UPDATE SET
+                            value = excluded.value,
+                            updated_at = excluded.updated_at
+                        """,
+                        (user_id, slot.name, slot.value, float(slot.updated_at or time.time())),
+                    )
+                conn.commit()
+
+    def get_slot(self, user_id: int, slot_name: str) -> Optional[str]:
+        with self._lock:
+            with self._connect() as conn:
+                row = conn.execute(
+                    """
+                    SELECT value
+                    FROM slots
+                    WHERE user_id = ? AND slot_name = ?
+                    """,
+                    (user_id, slot_name),
+                ).fetchone()
+        if row is None:
+            return None
+        return str(row[0])
+
+    def get_all_slots(self, user_id: int) -> Dict[str, str]:
+        records = self._get_slot_records(user_id)
+        return {slot_name: slot.value for slot_name, slot in records.items()}
+
+    def _get_slot_records(self, user_id: int) -> Dict[str, MemorySlot]:
+        with self._lock:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT slot_name, value, updated_at
+                    FROM slots
+                    WHERE user_id = ?
+                    ORDER BY updated_at DESC, slot_name ASC
+                    """,
+                    (user_id,),
+                ).fetchall()
+        return {
+            str(row[0]): MemorySlot(name=str(row[0]), value=str(row[1]), updated_at=float(row[2]))
+            for row in rows
+        }
 
     def get_recent_turns(self, user_id: int, limit: int = 6) -> List[Dict[str, str]]:
         if limit <= 0:

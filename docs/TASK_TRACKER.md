@@ -68,18 +68,18 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add chat-memory regression coverage for contradiction and multi-session recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Regression tests now cover conflicting facts, leaked prompt scaffolding, cross-session alias recall, and per-user retrieval isolation |
 | Add prompt/context compaction for chat memory injection | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Chat prompts now cap recent and retrieved turns so model context stays focused on high-signal memory snippets |
 | Expand chat-memory evaluation coverage for paraphrase recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Migration-gate fixtures now include paraphrased memory queries with category-level recall reporting for direct vs paraphrase retrieval |
-| Evaluate Qwen chat behavior and tighten the rule-vs-model boundary | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Qwen local runtime available | Live testing shows Qwen improves open-ended grounded answers, but the current rules remain too text-heavy in some paths; keep exact memory recall guarded while reducing awkward rule-based surface responses |
-| Add structured multi-fact memory extraction and typed slot storage | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Qwen chat evaluation | Current storage treats many multi-fact inputs as one text blob, which weakens recall, filtering, and correction handling |
-| Add deterministic correction and overwrite handling for remembered facts | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P0 | Structured fact slots | Examples like favorite color blue -> black and Java -> Python are acknowledged but not applied to exact recall |
-| Separate session directives from durable personal memory | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Structured fact slots | Inputs such as `Always respond in one sentence.` should be handled as session behavior, not stored as long-term personal memory |
-| Add typed compound-memory recall and transcript-based chat regressions | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P1 | Structured fact slots | Cover multi-slot recall, number memory, quoted multi-speaker inputs, and food/preference filtering using live Qwen transcript cases |
+| Evaluate Qwen chat behavior and tighten the rule-vs-model boundary | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | Qwen local runtime available | Structured slots now cover exact-memory paths, while live Qwen validation confirms improved handling for open-ended explanation, reflective follow-up, advice, and short creative prompts without regressing exact memory guardrails |
+| Add structured multi-fact memory extraction and typed slot storage | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | Qwen chat evaluation | Added typed slot extraction and persistence for multi-fact personal memory in `src/memory_slots.py` and `conversation_memory.py`, while keeping turn-level FTS/semantic fallback intact |
+| Add deterministic correction and overwrite handling for remembered facts | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | Structured fact slots | Explicit correction language such as `Actually, change it to black` now updates the stored slot deterministically for exact recall |
+| Separate session directives from durable personal memory | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | Structured fact slots | Response-style instructions such as `Always respond in one sentence.` are now detected as session directives and excluded from durable slot storage |
+| Add typed compound-memory recall and transcript-based chat regressions | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | Structured fact slots | Added multi-slot recall, remembered-number storage, quoted multi-speaker rejection, and food/preference filtering regressions based on the Qwen transcript |
 | Add rate limiting / cooldown on model calls | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Shared model cooldown guard now protects both command and chat paths and returns explicit cooldown responses instead of spamming model calls |
 | Define and enforce log rotation / log file size policy | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Telemetry now uses rotating file handlers by default with env-configurable size and retention policy |
 | Add input sanitization (guard against prompt injection) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Shared prompt-input sanitizer now neutralizes role markers and special tokens before decision/chat model calls while preserving deterministic routing and stored history |
 | Add harness trend tracking (historical accuracy + regression alerts) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | AI eval harness complete | AI evaluation harness now persists run history and surfaces regression alerts against previous runs |
 | Wire brain <-> robot command interface (keep ACTION contract) | Phase 2 - Mobility | 🟡 To do | P0 | Hardware integration | Interface should preserve action schema |
 | Implement physical movement system (forward/back/turn) | Phase 2 - Mobility | ⛔ Blocked (Hardware) | P0 | Motor hardware | Start after command interface is stable |
-| Implement src/motor_adapter.py stub (real + mock, following adapter pattern) | Phase 2 - Mobility | 🟡 To do | P0 | Motor HAT selection | Extend established adapter pattern; GPIO/PWM backend + mock for tests |
+| Implement src/motor_adapter.py stub (real + mock, following adapter pattern) | Phase 2 - Mobility | ✅ Done (Implemented) | P0 | Motor HAT selection | Added `src/motor_adapter.py` with backend-facing PWM stub, deterministic mock adapter, executor integration, and focused motor/safety tests |
 | Define GPIO/PWM duty cycle mapping and direction pin logic | Phase 2 - Mobility | 🟡 To do | P0 | Motor HAT selection | Translate speed_mps / angular_dps into PWM duty cycle and direction pins |
 | Define movement calibration procedure (left/right balance, turn radius, deadband) | Phase 2 - Mobility | 🟡 To do | P1 | Motor hardware | Required for predictable movement; document calibration steps |
 | Plan simulation → hardware transition (incremental PWM signal testing) | Phase 2 - Mobility | 🟡 To do | P1 | None | Draft step-by-step approach from mock state changes to real actuator output |
@@ -187,16 +187,10 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ## Top 10 Next Actions
 
-1. 🔵 Evaluate Qwen chat behavior and tighten the rule-vs-model boundary using the 2026-03-26 live transcript (P1 — Phase 1.1).
-2. 🟡 Add structured multi-fact memory extraction and typed slot storage (P1 — Phase 1.1).
-3. 🟡 Add deterministic correction and overwrite handling for remembered facts (P0 — Phase 1.1).
-4. 🟡 Separate session directives from durable personal memory (P1 — Phase 1.1).
-5. 🟡 Add typed compound-memory recall and transcript-based regressions (P1 — Phase 1.1).
-6. � Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
-7. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
-8. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
-9. 🟡 Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale when conversation volume grows (P2 — Phase 1.1).
-10. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
+1. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
+2. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
+3. 🟡 Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale when conversation volume grows (P2 — Phase 1.1).
+4. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
 
 ---
 

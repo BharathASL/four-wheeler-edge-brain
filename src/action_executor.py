@@ -13,6 +13,36 @@ class ActionExecutor:
         self.adapters = hardware_adapters or {}
         self.state = state_manager
 
+    def _motor_adapter(self):
+        return self.adapters.get("motor")
+
+    def _stop_motor_safely(self, error_info: str):
+        motor = self._motor_adapter()
+        if motor is None:
+            return None
+        try:
+            motor.stop()
+            return None
+        except Exception as exc:
+            self._state_update(estop_latched=True, is_idle=True)
+            return {
+                "status": "error",
+                "info": error_info,
+                "error": str(exc),
+            }
+
+    def _fail_safe_motor_error(self, info: str, exc: Exception):
+        self._state_update(estop_latched=True, is_idle=True)
+        stop_error = self._stop_motor_safely(error_info=f"{info}-stop-failed")
+        result = {
+            "status": "error",
+            "info": info,
+            "error": str(exc),
+        }
+        if stop_error is not None:
+            result["stop_error"] = stop_error["error"]
+        return result
+
     def _state_snapshot(self) -> Dict[str, Any]:
         if self.state is None:
             return {}
@@ -31,8 +61,17 @@ class ActionExecutor:
         params = action.get("params", {})
         snap = self._state_snapshot()
 
+        if name == "STOP":
+            stop_error = self._stop_motor_safely(error_info="motor-stop-failed")
+            if stop_error is not None:
+                return stop_error
+            return {"status": "ok", "info": "stopped"}
+
         if name == "ESTOP":
             self._state_update(estop_latched=True, is_idle=True)
+            stop_error = self._stop_motor_safely(error_info="estop-stop-failed")
+            if stop_error is not None:
+                return stop_error
             return {"status": "ok", "info": "estop-latched"}
 
         if name == "RESET_ESTOP":
@@ -55,8 +94,6 @@ class ActionExecutor:
             return {"status": "blocked", "info": "manual-override-active"}
 
         # Simulation-mode actions
-        if name == "STOP":
-            return {"status": "ok", "info": "stopped"}
         if name == "IDLE":
             self._state_update(is_idle=True)
             return {"status": "ok", "info": "idle"}
@@ -65,8 +102,28 @@ class ActionExecutor:
         if name == "MOVE":
             safe_action = clamp_movement_action(action, snap)
             if safe_action.get("action") == "STOP":
+                stop_error = self._stop_motor_safely(error_info="motor-stop-failed")
+                if stop_error is not None:
+                    return stop_error
                 return {"status": "ok", "info": "stopped-by-safety", "safety": safe_action.get("params", {})}
             safe_params = safe_action.get("params", {})
+            motor = self._motor_adapter()
+            if motor is not None:
+                try:
+                    motor.set_motion(
+                        linear_mps=safe_params.get("linear_mps", 0.0),
+                        angular_dps=safe_params.get("angular_dps", 0.0),
+                    )
+                except Exception as exc:
+                    return self._fail_safe_motor_error("motor-adapter-failed", exc)
+                return {
+                    "status": "ok",
+                    "info": "moving-adapter",
+                    "params": {
+                        "linear_mps": safe_params.get("linear_mps", 0.0),
+                        "angular_dps": safe_params.get("angular_dps", 0.0),
+                    },
+                }
             return {
                 "status": "ok",
                 "info": "moving-simulated",

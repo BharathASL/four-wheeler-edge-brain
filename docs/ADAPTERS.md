@@ -63,6 +63,35 @@ Class: MockCameraAdapter(CameraAdapter)
 - capture_frame() -> Tuple[int, int, str]
   - Returns placeholder frame tuple for tests.
 
+## Motor Adapter
+
+Source: src/motor_adapter.py
+
+Class: MotorAdapter
+
+- set_motion(linear_mps: float, angular_dps: float) -> None
+  - Contract: apply a drive command using linear velocity and angular turn rate.
+- stop() -> None
+  - Contract: stop the drive base immediately.
+
+Class: PWMMotorAdapter(MotorAdapter)
+
+- __init__(backend: Optional[object] = None)
+  - Accepts an injected hardware backend while GPIO/PWM and motor-HAT choices are still undecided.
+- set_motion(linear_mps: float, angular_dps: float) -> None
+  - Delegates to backend `set_motion(...)`.
+  - Raises RuntimeError when no backend is configured or the backend lacks the required method.
+- stop() -> None
+  - Delegates to backend `stop()`.
+  - Raises RuntimeError when no backend is configured or the backend lacks the required method.
+
+Class: MockMotorAdapter(MotorAdapter)
+
+- set_motion(linear_mps: float, angular_dps: float) -> None
+  - Records commanded motion for tests.
+- stop() -> None
+  - Records stop calls for tests.
+
 ## Decision Engine Integration Contract
 
 Source: src/decision_engine.py

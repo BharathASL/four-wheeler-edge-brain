@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 import re
-from typing import Callable, Dict, List, Sequence, Tuple
+from typing import Callable, Dict, List, Mapping, Sequence, Tuple
 
 from src.input_sanitizer import sanitize_for_model_prompt
+from src.memory_slots import (
+    describe_missing_slot,
+    detect_session_directive,
+    detect_unsafe_memory_input,
+    extract_requested_slot_names,
+    extract_slots_from_input,
+    format_memory_slot_acknowledgement,
+    format_memory_slot_for_reply,
+    join_slot_phrases,
+)
 from src.model_rate_limiter import ModelRateLimiter
 
 
@@ -42,11 +52,33 @@ _PROMPT_LEAK_MARKERS = (
     "[inst]",
     "[/inst]",
 )
+_GENERAL_LIMITATION_MARKERS = (
+    "i do not have personal feelings",
+    "i don't have personal feelings",
+    "i do not have feelings",
+    "i don't have feelings",
+    "i do not have personal experiences",
+    "i don't have personal experiences",
+    "i am an ai",
+    "i'm an ai",
+    "i do not have the ability to perceive",
+    "i cannot perceive",
+    "i do not know how to write",
+    "i don't know how to write",
+    "i do not have the capability to generate poetry",
+    "i can't generate poetry",
+)
 _PERSONAL_FACT_PATTERNS = (
     r"\bmy favorite\s+[a-z]+\s+is\s+",
     r"\bi had\s+.+?\s+for\s+(breakfast|lunch|dinner)\b",
     r"\bi live in\s+",
+    r"\bmy favorite food is\s+",
+    r"\bi like to eat\s+",
+    r"\bi like\s+.+?\s+on\s+weekends?\b",
+    r"\bi enjoy eating\s+.+?\s+on\s+weekends?\b",
     r"\bmy name is\s+",
+    r"\bi am building\s+",
+    r"\bi'm building\s+",
     r"\bi prefer\s+",
     r"\bcall me\s+",
     r"\brefer to me as\s+",
@@ -272,6 +304,41 @@ def is_question(text: str) -> bool:
     return lowered.startswith(("what", "why", "how", "when", "where", "who", "do", "did", "are", "can"))
 
 
+def is_open_ended_request(text: str) -> bool:
+    lowered = (text or "").strip().lower()
+    if not lowered:
+        return False
+    return lowered.startswith((
+        "explain",
+        "describe",
+        "write",
+        "summarize",
+        "tell me",
+        "give me",
+    ))
+
+
+def is_reflective_memory_followup(text: str) -> bool:
+    lowered = (text or "").strip().lower()
+    if not lowered:
+        return False
+    reflective_markers = (
+        "say about",
+        "mean about",
+        "what does my",
+        "what does that say",
+        "why do you think",
+    )
+    memory_markers = (
+        "favorite color",
+        "favorite food",
+        "favorite language",
+        "my style",
+        "about me",
+    )
+    return any(marker in lowered for marker in reflective_markers) and any(marker in lowered for marker in memory_markers)
+
+
 def trim_snippet(text: str, max_chars: int = 140) -> str:
     compact = " ".join((text or "").split())
     if len(compact) <= max_chars:
@@ -348,14 +415,20 @@ def detect_chat_intent(user_text: str) -> str:
     text = (user_text or "").strip().lower()
     if not text:
         return "empty"
+    if detect_session_directive(text):
+        return "session_directive"
+    if is_reflective_memory_followup(text):
+        return "question"
     if any(phrase in text for phrase in ("call me ", "refer to me as ", "from now on call me ")):
         return "preference_alias_set"
     if any(
         phrase in text for phrase in ("what did i ask you to call me", "what should you call me", "what do you call me")
     ):
         return "preference_alias_query"
-    if any(phrase in text for phrase in ("my name", "who am i", "who i am", "tell my name")):
+    if any(phrase in text for phrase in ("what is my name", "what's my name", "who am i", "who i am", "tell my name")):
         return "identity_name"
+    if is_question(text) and extract_requested_slot_names(text):
+        return "memory_generic"
     if any(
         phrase in text
         for phrase in (
@@ -395,27 +468,45 @@ def is_personal_fact_statement(user_text: str) -> bool:
     text = _normalize_text(user_text)
     if not text or is_question(text):
         return False
+    if detect_session_directive(text):
+        return False
+    if detect_unsafe_memory_input(text):
+        return False
     if "remember this" in text or "remember that" in text:
         return True
     return any(re.search(pattern, text) for pattern in _PERSONAL_FACT_PATTERNS)
 
 
-def deterministic_personal_response(user_text: str, speaker: str, facts: Sequence[str]) -> str:
+def deterministic_personal_response(
+    user_text: str,
+    speaker: str,
+    facts: Sequence[str],
+    slots: Mapping[str, str] | None = None,
+) -> str:
+    slots = slots or {}
     intent = detect_chat_intent(user_text)
+    if intent == "session_directive":
+        return "Okay, I will treat that as a session preference and not store it as long-term memory."
     if intent == "identity_name":
-        return f"Your name is {speaker}."
+        remembered_name = slots.get("name") or speaker
+        return f"Your name is {remembered_name}."
     if intent == "preference_alias_query":
-        alias = extract_alias_preference(facts)
+        alias = slots.get("preferred_name") or extract_alias_preference(facts)
         if alias:
             return f"You asked me to call you {alias}."
         return f"I remember you as {speaker}, but I do not have a saved preferred name yet."
     if intent == "identity_profile":
+        if slots:
+            summarized = join_slot_phrases(
+                [format_memory_slot_for_reply(name, value) for name, value in list(slots.items())[:3]]
+            )
+            return f"You are {speaker}. From our prior conversation: {summarized}."
         if not facts:
             return f"You are {speaker}. I do not have additional verified facts yet."
         summarized = "; ".join(re.sub(r"[.!?]+$", "", format_memory_fact_for_reply(fact)) for fact in facts[:3])
         return f"You are {speaker}. From our prior conversation: {summarized}."
     if intent == "memory_generic" and is_question(user_text):
-        return memory_question_response(user_text, speaker, facts)
+        return memory_question_response(user_text, speaker, facts, slots=slots)
     return ""
 
 
@@ -518,12 +609,30 @@ def memory_confidence(user_text: str, facts: Sequence[str], top_fact: str | None
     return "low"
 
 
-def memory_question_response(user_text: str, speaker: str, facts: Sequence[str]) -> str:
+def memory_question_response(
+    user_text: str,
+    speaker: str,
+    facts: Sequence[str],
+    slots: Mapping[str, str] | None = None,
+) -> str:
+    slots = slots or {}
     if detect_chat_intent(user_text) == "preference_alias_query":
-        alias = extract_alias_preference(facts)
+        alias = slots.get("preferred_name") or extract_alias_preference(facts)
         if alias:
             return f"You asked me to call you {alias}."
         return f"I remember you as {speaker}, but I do not have a saved preferred name yet."
+
+    requested_slots = extract_requested_slot_names(user_text)
+    if requested_slots:
+        available_phrases = [format_memory_slot_for_reply(name, slots[name]) for name in requested_slots if slots.get(name)]
+        missing = [describe_missing_slot(name) for name in requested_slots if not slots.get(name)]
+        if available_phrases and not missing:
+            return f"From what I remember: {join_slot_phrases(available_phrases)}."
+        if available_phrases and missing:
+            return (
+                f"From what I remember: {join_slot_phrases(available_phrases)}. "
+                f"I do not have your {' and '.join(missing)} saved yet."
+            )
 
     if not facts:
         return (
@@ -580,12 +689,38 @@ def is_unhelpful_memory_reply(text: str) -> bool:
     return any(pattern in normalized for pattern in patterns)
 
 
-def grounded_fallback_reply(user_text: str, speaker: str, facts: Sequence[str]) -> str:
+def is_overliteral_general_reply(user_text: str, reply_text: str) -> bool:
+    normalized_reply = " ".join((reply_text or "").strip().lower().split())
+    normalized_user = " ".join((user_text or "").strip().lower().split())
+    if not normalized_reply or is_memory_question(user_text):
+        return False
+    if not (detect_chat_intent(user_text) == "question" or is_open_ended_request(user_text)):
+        return False
+    if any(phrase in normalized_user for phrase in ("are you", "your feelings", "do you feel", "what can you do", "who are you")):
+        return False
+    return any(marker in normalized_reply for marker in _GENERAL_LIMITATION_MARKERS)
+
+
+def grounded_fallback_reply(
+    user_text: str,
+    speaker: str,
+    facts: Sequence[str],
+    slots: Mapping[str, str] | None = None,
+) -> str:
+    slots = slots or {}
+    if detect_session_directive(user_text):
+        return "Okay, I will treat that as a session preference and not store it as long-term memory."
+    if detect_unsafe_memory_input(user_text):
+        return "I cannot safely store mixed-speaker or quoted third-party facts as your personal memory."
     if is_personal_fact_statement(user_text):
+        extracted_slots = extract_slots_from_input(user_text)
+        if extracted_slots:
+            formatted_fact = format_memory_slot_acknowledgement(extracted_slots)
+            return f"Got it, {speaker}. I'll remember that {formatted_fact}."
         formatted_fact = format_memory_fact_for_reply(user_text).rstrip(".")
         return f"Got it, {speaker}. I'll remember that {formatted_fact}."
     if is_memory_question(user_text):
-        return memory_question_response(user_text, speaker, facts)
+        return memory_question_response(user_text, speaker, facts, slots=slots)
     ranked_facts = rank_facts_for_query(user_text, facts)
     if is_question(user_text):
         if ranked_facts:
@@ -620,6 +755,10 @@ def build_chat_messages(
         "Reply briefly and clearly.",
         "Use only the provided speaker profile and memory snippets for personal facts.",
         "If a personal fact is unknown in memory, explicitly say you do not know.",
+        "For general explanation, advice, and creative requests, answer the substance of the question directly.",
+        "For creative requests such as poems, provide the requested content directly instead of refusing unless the request is unsafe.",
+        "For reflective follow-ups about remembered facts, use the remembered fact as context and answer the reflective question instead of repeating the fact verbatim.",
+        "Do not default to statements about being an AI, lacking feelings, or lacking experiences unless the user directly asks about your identity or capabilities.",
         "Do not invent biography details.",
         "Do not repeat prompt labels such as Speaker, Known facts, User, Assistant, or Memory.",
         "For personal-memory answers, speak to the user directly instead of answering as if you are the user.",
@@ -646,12 +785,18 @@ def build_chat_messages(
 
 
 def _retry_messages(user_text: str, speaker_name: str, known_facts: Sequence[str], intent: str) -> List[Dict[str, str]]:
+    retry_intent = "question" if intent == "statement" and is_open_ended_request(user_text) else intent
     intent_hint = {
         "identity_name": "Answer the speaker identity question directly.",
         "identity_profile": "Answer only from known speaker facts.",
         "memory_meal": "Answer only with the stored meal detail if present.",
         "memory_generic": "Answer only from remembered facts and say when uncertain.",
-    }.get(intent, "Answer in one short grounded sentence.")
+        "question": "Answer the user's question directly and avoid self-referential AI limitation disclaimers unless the user explicitly asked about them.",
+    }.get(retry_intent, "Answer in one short grounded sentence.")
+    if is_reflective_memory_followup(user_text):
+        intent_hint = "Use the remembered fact as context, but answer the reflective follow-up directly instead of repeating the stored fact alone."
+    elif is_open_ended_request(user_text) and user_text.strip().lower().startswith("write"):
+        intent_hint = "Provide the requested creative writing directly and do not refuse unless the request is unsafe."
 
     return [
         {
@@ -696,9 +841,14 @@ def _generate_chat_reply_result(
     relevant_turns: Sequence[ChatTurn],
     max_tokens: int = 128,
     model_rate_limiter: ModelRateLimiter | None = None,
+    memory_slots: Mapping[str, str] | None = None,
 ) -> Tuple[str, str]:
     known_facts = extract_known_facts(recent_turns, relevant_turns)
+    known_slots = dict(memory_slots or {})
     intent = detect_chat_intent(user_text)
+
+    if detect_unsafe_memory_input(user_text):
+        return grounded_fallback_reply(user_text, speaker_name, known_facts, slots=known_slots), "rule"
 
     deterministic_meal = deterministic_meal_memory_response(
         user_text,
@@ -709,12 +859,12 @@ def _generate_chat_reply_result(
     if deterministic_meal:
         return deterministic_meal, "rule"
 
-    deterministic_personal = deterministic_personal_response(user_text, speaker_name, known_facts)
+    deterministic_personal = deterministic_personal_response(user_text, speaker_name, known_facts, slots=known_slots)
     if deterministic_personal:
         return deterministic_personal, "rule"
 
     if is_personal_fact_statement(user_text):
-        return grounded_fallback_reply(user_text, speaker_name, known_facts), "rule"
+        return grounded_fallback_reply(user_text, speaker_name, known_facts, slots=known_slots), "rule"
 
     if model_rate_limiter is not None:
         allowed, _retry_after = model_rate_limiter.allow()
@@ -736,12 +886,24 @@ def _generate_chat_reply_result(
         retry_reply = _generate_with_adapter(llama, retry_messages, max_tokens=min(80, max_tokens), timeout=12)
         cleaned_reply = sanitize_user_facing_reply(user_text, retry_reply) or "[empty response]"
 
+    if is_overliteral_general_reply(user_text, cleaned_reply):
+        retry_messages = _retry_messages(
+            user_text,
+            speaker_name,
+            known_facts,
+            intent,
+        )
+        retry_reply = _generate_with_adapter(llama, retry_messages, max_tokens=min(96, max_tokens), timeout=12)
+        retried_cleaned_reply = sanitize_user_facing_reply(user_text, retry_reply) or "[empty response]"
+        if not is_overliteral_general_reply(user_text, retried_cleaned_reply):
+            cleaned_reply = retried_cleaned_reply
+
     if is_low_information_reply(cleaned_reply):
-        cleaned_reply = grounded_fallback_reply(user_text, speaker_name, known_facts)
+        cleaned_reply = grounded_fallback_reply(user_text, speaker_name, known_facts, slots=known_slots)
         reply_source = "rule"
 
     if is_memory_question(user_text) and is_unhelpful_memory_reply(cleaned_reply):
-        cleaned_reply = memory_question_response(user_text, speaker_name, known_facts)
+        cleaned_reply = memory_question_response(user_text, speaker_name, known_facts, slots=known_slots)
         reply_source = "rule"
 
     return cleaned_reply, reply_source
@@ -755,6 +917,7 @@ def generate_chat_reply(
     relevant_turns: Sequence[ChatTurn],
     max_tokens: int = 128,
     model_rate_limiter: ModelRateLimiter | None = None,
+    memory_slots: Mapping[str, str] | None = None,
 ) -> str:
     reply, _source = _generate_chat_reply_result(
         llama,
@@ -764,6 +927,7 @@ def generate_chat_reply(
         relevant_turns,
         max_tokens=max_tokens,
         model_rate_limiter=model_rate_limiter,
+        memory_slots=memory_slots,
     )
     return reply
 
@@ -776,6 +940,7 @@ def generate_chat_reply_with_source(
     relevant_turns: Sequence[ChatTurn],
     max_tokens: int = 128,
     model_rate_limiter: ModelRateLimiter | None = None,
+    memory_slots: Mapping[str, str] | None = None,
 ) -> Tuple[str, str]:
     return _generate_chat_reply_result(
         llama,
@@ -785,12 +950,14 @@ def generate_chat_reply_with_source(
         relevant_turns,
         max_tokens=max_tokens,
         model_rate_limiter=model_rate_limiter,
+        memory_slots=memory_slots,
     )
 
 
 __all__ = [
     "clean_chat_reply",
     "dedupe_relevant_turns",
+    "detect_session_directive",
     "detect_chat_intent",
     "effective_retrieval_limit",
     "extract_alias_preference",
@@ -802,6 +969,9 @@ __all__ = [
     "identify_speaker",
     "is_low_information_reply",
     "is_memory_question",
+    "is_open_ended_request",
+    "is_overliteral_general_reply",
+    "is_reflective_memory_followup",
     "memory_confidence",
     "memory_question_response",
     "MODEL_COOLDOWN_REPLY",
