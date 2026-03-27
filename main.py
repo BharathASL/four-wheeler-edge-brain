@@ -223,21 +223,39 @@ def chat_loop(
     retrieval_turns: int = 3,
     benchmark_memory_retrieval: bool = False,
     memory_db_path: str = "data/conversations.sqlite",
+    retrieval_mode: str = "fts",
+    semantic_backend: str = "auto",
 ):
     from src.chat_behavior import (
         MODEL_COOLDOWN_REPLY,
         dedupe_relevant_turns,
         effective_retrieval_limit,
-        generate_chat_reply,
+        generate_chat_reply_with_source,
         identify_speaker,
         normalize_personal_fact_for_storage,
     )
     from src.conversation_memory import ConversationMemoryStore, RetrievalBenchmarkRecorder
     from src.model_rate_limiter import ModelRateLimiter
+    from src.semantic_memory import SemanticMemoryIndex
 
     logger = init_telemetry("phase1_chat")
     model_cooldown_seconds = max(0.0, float(os.getenv("MODEL_COOLDOWN_SECONDS", "2.0")))
-    memory_store = ConversationMemoryStore(db_path=memory_db_path)
+    normalized_retrieval_mode = (retrieval_mode or "fts").strip().lower()
+    if normalized_retrieval_mode not in {"fts", "semantic", "hybrid"}:
+        logger.warning("Unknown retrieval mode=%s; falling back to fts", retrieval_mode)
+        normalized_retrieval_mode = "fts"
+
+    normalized_semantic_backend = (semantic_backend or "auto").strip().lower()
+    semantic_index = None
+    if normalized_retrieval_mode in {"semantic", "hybrid"}:
+        prefer_faiss = normalized_semantic_backend != "in-memory"
+        semantic_index = SemanticMemoryIndex(prefer_faiss=prefer_faiss)
+
+    memory_store = ConversationMemoryStore(
+        db_path=memory_db_path,
+        semantic_index=semantic_index,
+        default_retrieval_mode=normalized_retrieval_mode,
+    )
     retrieval_bench = RetrievalBenchmarkRecorder() if benchmark_memory_retrieval else None
     model_rate_limiter = ModelRateLimiter(model_cooldown_seconds)
     llama, effective_mode = _build_llama_adapter(
@@ -255,6 +273,9 @@ def chat_loop(
     print("Type '/switch' to switch speaker profile")
     print(f"Chat history window: last {history_turns} turns")
     print(f"Long-memory retrieval window: top {retrieval_turns} turns")
+    print(f"Retrieval mode: {normalized_retrieval_mode}")
+    if semantic_index is not None:
+        print(f"Semantic backend: {semantic_index.backend_name}")
     print(f"Model cooldown window: {model_cooldown_seconds:.1f}s")
     if retrieval_bench is not None:
         print("Memory retrieval benchmark hooks: enabled")
@@ -278,11 +299,12 @@ def chat_loop(
                 query=user,
                 limit=effective_retrieval_turns,
                 metrics_hook=retrieval_bench.record if retrieval_bench is not None else None,
+                retrieval_mode=normalized_retrieval_mode,
             )
             relevant_old = dedupe_relevant_turns(recent, relevant_old)
 
             try:
-                cleaned_reply = generate_chat_reply(
+                cleaned_reply, reply_source = generate_chat_reply_with_source(
                     llama,
                     user,
                     speaker_name,
@@ -291,7 +313,7 @@ def chat_loop(
                     max_tokens=max_tokens,
                     model_rate_limiter=model_rate_limiter,
                 )
-                print("assistant>", cleaned_reply)
+                print(f"assistant[{reply_source}]>", cleaned_reply)
                 if cleaned_reply != MODEL_COOLDOWN_REPLY:
                     memory_store.append_turn(speaker_id, normalize_personal_fact_for_storage(user), cleaned_reply)
             except Exception as exc:
@@ -334,6 +356,8 @@ def main():
         cli_retrieval_turns = 3
         cli_benchmark_memory_retrieval = False
         cli_memory_db_path = env_memory_db_path
+        cli_retrieval_mode = os.getenv("MEMORY_RETRIEVAL_MODE", "fts")
+        cli_semantic_backend = os.getenv("SEMANTIC_BACKEND", "auto")
 
         for idx, token in enumerate(sys.argv):
             if token == "--model-mode" and idx + 1 < len(sys.argv):
@@ -356,6 +380,10 @@ def main():
                     cli_retrieval_turns = 3
             if token == "--memory-db-path" and idx + 1 < len(sys.argv):
                 cli_memory_db_path = sys.argv[idx + 1]
+            if token == "--retrieval-mode" and idx + 1 < len(sys.argv):
+                cli_retrieval_mode = sys.argv[idx + 1]
+            if token == "--semantic-backend" and idx + 1 < len(sys.argv):
+                cli_semantic_backend = sys.argv[idx + 1]
         if "--benchmark-memory-retrieval" in sys.argv:
             cli_benchmark_memory_retrieval = True
 
@@ -369,6 +397,8 @@ def main():
                 retrieval_turns=cli_retrieval_turns,
                 benchmark_memory_retrieval=cli_benchmark_memory_retrieval,
                 memory_db_path=cli_memory_db_path,
+                retrieval_mode=cli_retrieval_mode,
+                semantic_backend=cli_semantic_backend,
             )
             return
 

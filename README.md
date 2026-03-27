@@ -97,6 +97,15 @@ Enable long-history retrieval from older conversations (SQLite FTS):
 python main.py --chat-mode --chat-history-turns 6 --retrieval-turns 4 --strict-model
 ```
 
+Compare live chat retrieval modes with the same model and memory database:
+
+```bash
+python main.py --chat-mode --model-mode real --model-path /absolute/path/to/model.gguf --memory-db-path data/chat_compare.sqlite --retrieval-mode fts --strict-model
+python main.py --chat-mode --model-mode real --model-path /absolute/path/to/model.gguf --memory-db-path data/chat_compare.sqlite --retrieval-mode hybrid --semantic-backend in-memory --strict-model
+```
+
+Use the same speaker profile and ask the same paraphrased memory questions in both runs to compare grounded recall.
+
 Enable retrieval benchmark hooks (prints latency/hit metrics on exit):
 
 ```bash

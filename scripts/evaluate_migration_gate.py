@@ -19,6 +19,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.conversation_memory import ConversationMemoryStore, RetrievalMetrics
+from src.semantic_memory import SemanticMemoryIndex
 
 
 def _percentile(values: List[float], percentile: float) -> float:
@@ -61,7 +62,14 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     db_path = Path(args.db_path)
     if db_path.exists():
         db_path.unlink()
-    store = ConversationMemoryStore(db_path=args.db_path)
+    semantic_index = None
+    if args.retrieval_mode in {"semantic", "hybrid"}:
+        semantic_index = SemanticMemoryIndex(prefer_faiss=args.semantic_backend != "in-memory")
+    store = ConversationMemoryStore(
+        db_path=args.db_path,
+        semantic_index=semantic_index,
+        default_retrieval_mode=args.retrieval_mode,
+    )
 
     speaker_name = query_set.get("speaker_name", "migration-gate-eval-user")
     user_id, _ = store.get_or_create_user(speaker_name)
@@ -84,6 +92,7 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
             query=query,
             limit=args.k,
             metrics_hook=metrics.append,
+            retrieval_mode=args.retrieval_mode,
         )
         matched = _contains_any_expected(rows, expected_tokens)
         hits += 1 if matched else 0
@@ -122,6 +131,8 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
         "dataset": args.query_set,
         "db_path": args.db_path,
         "k": args.k,
+        "retrieval_mode": args.retrieval_mode,
+        "semantic_backend": semantic_index.backend_name if semantic_index is not None else "disabled",
         "thresholds": {
             "min_recall_at_k": args.min_recall_at_k,
             "max_p95_ms": args.max_p95_ms,
@@ -139,7 +150,7 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
         "decision": {
             "pass": threshold_pass,
             "recommendation": (
-                "Keep SQLite retrieval for now"
+                "Keep current retrieval path for now"
                 if threshold_pass
                 else "Investigate FAISS/hybrid migration"
             ),
@@ -162,6 +173,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="SQLite database path for evaluation",
     )
     parser.add_argument("-k", type=int, default=4, help="Top-k retrieved turns per query")
+    parser.add_argument(
+        "--retrieval-mode",
+        choices=("fts", "semantic", "hybrid"),
+        default="fts",
+        help="Retrieval mode to evaluate",
+    )
+    parser.add_argument(
+        "--semantic-backend",
+        choices=("auto", "in-memory", "faiss"),
+        default="auto",
+        help="Semantic backend preference for semantic or hybrid evaluation",
+    )
     parser.add_argument("--min-recall-at-k", type=float, default=0.80)
     parser.add_argument("--max-p95-ms", type=float, default=20.0)
     parser.add_argument("--max-p99-ms", type=float, default=30.0)

@@ -7,6 +7,7 @@ from src.chat_behavior import (
     extract_alias_preference,
     format_memory_fact_for_reply,
     generate_chat_reply,
+    generate_chat_reply_with_source,
     identify_speaker,
     memory_question_response,
     normalize_personal_fact_for_storage,
@@ -230,7 +231,7 @@ def test_generate_chat_reply_grounds_personal_fact_statement_without_model_call(
         relevant_turns=[],
     )
 
-    assert reply == "Got it, steffi. I have noted: My favorite color is teal. Remember this."
+    assert reply == "Got it, steffi. I'll remember that your favorite color is teal."
     assert llama.last_prompt is None
 
 
@@ -308,6 +309,52 @@ def test_generate_chat_reply_recalls_normalized_stored_fact_across_sessions(tmp_
     )
 
     assert reply == "From what I remember: your favorite color is teal."
+
+
+def test_generate_chat_reply_does_not_let_model_mutate_memory_fact_value():
+    llama = _PromptOnlyLlama(
+        "Bharath, I have noted that your favorite color is tea. You can use this information later."
+    )
+
+    reply = generate_chat_reply(
+        llama,
+        "What is my favorite color?",
+        "bharath",
+        recent_turns=[{"user": "My favorite color is teal.", "assistant": "noted"}],
+        relevant_turns=[],
+    )
+
+    assert reply == "From what I remember: your favorite color is teal."
+    assert llama.last_prompt is None
+
+
+def test_generate_chat_reply_with_source_marks_memory_recall_as_rule():
+    reply, source = generate_chat_reply_with_source(
+        _PromptOnlyLlama("Assistant: ignored"),
+        "What is my favorite color?",
+        "bharath",
+        recent_turns=[{"user": "My favorite color is teal.", "assistant": "noted"}],
+        relevant_turns=[],
+    )
+
+    assert reply == "From what I remember: your favorite color is teal."
+    assert source == "rule"
+
+
+def test_generate_chat_reply_with_source_marks_open_question_as_model():
+    llama = _PromptOnlyLlama("Assistant: Teal often feels calming because it blends blue and green tones.")
+
+    reply, source = generate_chat_reply_with_source(
+        llama,
+        "Explain why teal feels calming.",
+        "bharath",
+        recent_turns=[{"user": "My favorite color is teal.", "assistant": "noted"}],
+        relevant_turns=[],
+    )
+
+    assert reply == "Teal often feels calming because it blends blue and green tones."
+    assert source == "model"
+    assert llama.last_prompt is not None
 
 
 def test_generate_chat_reply_recalls_alias_across_sessions(tmp_path):
