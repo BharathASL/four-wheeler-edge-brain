@@ -190,7 +190,7 @@ This file is the source of truth for planning and progress tracking in the repos
 1. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
 2. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
 3. 🟡 Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale when conversation volume grows (P2 — Phase 1.1).
-10. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
+4. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
 
 ---
 
