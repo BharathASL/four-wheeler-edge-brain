@@ -132,10 +132,10 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add SQLite FTS retrieval for long-history recall | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Retrieve relevant older turns without loading full history into prompt |
 | Add retrieval benchmark hooks for migration-gate metrics | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Latency and retrieval-hit hooks added for recall benchmarking |
 | Define objective migration gate (latency + recall metrics) for FAISS adoption | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Evaluator script records recall@k and latency percentiles with threshold decision |
-| Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Migration gate complete | Add semantic retrieval abstraction first, keep SQLite as source of truth, and gate runtime enablement on evaluator results |
-| Add semantic retrieval abstraction with FAISS-ready fallback path | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Hybrid memory design | Build semantic index module with optional FAISS backend and safe in-memory fallback for development/tests |
-| Extend migration-gate evaluator for semantic and hybrid retrieval modes | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Semantic retrieval abstraction | Compare lexical, semantic, and hybrid retrieval paths under the same recall/latency thresholds |
-| Document semantic memory architecture and enablement gate | Phase 1.1 - Reliability & Safety Hardening | 🔵 In progress | P1 | Hybrid memory design | Capture embedding/index decisions, fallback behavior, and the gate for promoting semantic retrieval |
+| Design hybrid memory architecture (SQLite source-of-truth + FAISS semantic index) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | SemanticMemoryIndex with in-memory and FAISS-ready backends added; SQLite remains source of truth; runtime enablement gated on evaluator |
+| Add semantic retrieval abstraction with FAISS-ready fallback path | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | src/semantic_memory.py implements SemanticMemoryIndex, HashingSemanticEncoder, InMemorySemanticBackend, and FaissSemanticBackend with safe fallback |
+| Extend migration-gate evaluator for semantic and hybrid retrieval modes | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | evaluate_migration_gate.py now supports --retrieval-mode fts/semantic/hybrid and --semantic-backend flags with richer JSON report |
+| Document semantic memory architecture and enablement gate | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | docs/phase1/SEMANTIC_MEMORY_DESIGN.md captures design decisions, retrieval modes, encoder strategy, and the enablement gate criteria |
 | Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added evaluator script with thresholded pass/fail and JSON report |
 | Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Decision engine tests now cover timeout, unavailable runtime, generic error, and malformed output |
 | Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P2 | Migration gate complete | Consider once conversation volume grows beyond simple SQLite recall |
@@ -192,12 +192,12 @@ This file is the source of truth for planning and progress tracking in the repos
 3. 🟡 Add deterministic correction and overwrite handling for remembered facts (P0 — Phase 1.1).
 4. 🟡 Separate session directives from durable personal memory (P1 — Phase 1.1).
 5. 🟡 Add typed compound-memory recall and transcript-based regressions (P1 — Phase 1.1).
-6. 🔵 Complete the semantic retrieval abstraction with FAISS-ready fallback behavior (P1 — Phase 1.1).
-7. 🔵 Extend the migration gate to compare lexical, semantic, and hybrid retrieval modes (P1 — Phase 1.1).
-8. 🟡 Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
-9. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
-10. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
+6. � Implement src/motor_adapter.py stub (real + mock) to extend the adapter pattern before hardware arrives (P0 — Phase 1.2).
+7. 🟡 Draft docs/phase1_2/HARDWARE_BRINGUP.md bring-up guide (can be done now, before Pi arrives) (P0 — Phase 1.2).
+8. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
+9. 🟡 Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale when conversation volume grows (P2 — Phase 1.1).
+10. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
 
 ---
 
-Last updated: 2026-03-26 (Qwen local chat evaluation exposed the next Phase 1.1 gaps: structured multi-fact memory, correction handling, directive separation, and typed compound recall)
+Last updated: 2026-03-27 (Semantic retrieval scaffolding merged via PR #11: SemanticMemoryIndex, hybrid retrieval with backfill/dedupe, batched backfill, thread-safe index ops, and migration-gate evaluator modes all done)
