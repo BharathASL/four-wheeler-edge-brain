@@ -7,6 +7,7 @@ minimal for Phase‑1 and suitable for unit testing with mocked adapters.
 from typing import Dict, Any
 
 from src.chat_behavior import sanitize_user_facing_reply
+from src.config import RobotConfig as _cfg
 from src.input_sanitizer import sanitize_for_model_prompt
 from src.model_rate_limiter import ModelRateLimiter
 
@@ -15,7 +16,7 @@ class DecisionEngine:
     def __init__(
         self,
         llama_adapter=None,
-        model_timeout: float = 5.0,
+        model_timeout: float = _cfg.MODEL_TIMEOUT_S,
         model_rate_limiter: ModelRateLimiter | None = None,
     ):
         self.llama = llama_adapter
@@ -56,13 +57,13 @@ class DecisionEngine:
 
         # Rule: basic movement intents (will be safety-clamped by executor).
         if "forward" in text:
-            return {"action": "MOVE", "params": {"linear_mps": 0.5, "angular_dps": 0.0}}
+            return {"action": "MOVE", "params": {"linear_mps": _cfg.DEFAULT_FWD_SPEED_MPS, "angular_dps": 0.0}}
         if "back" in text or "reverse" in text:
-            return {"action": "MOVE", "params": {"linear_mps": -0.2, "angular_dps": 0.0}}
+            return {"action": "MOVE", "params": {"linear_mps": _cfg.DEFAULT_BACK_SPEED_MPS, "angular_dps": 0.0}}
         if "left" in text:
-            return {"action": "MOVE", "params": {"linear_mps": 0.0, "angular_dps": 60.0}}
+            return {"action": "MOVE", "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_LEFT_DPS}}
         if "right" in text:
-            return {"action": "MOVE", "params": {"linear_mps": 0.0, "angular_dps": -60.0}}
+            return {"action": "MOVE", "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_RIGHT_DPS}}
 
         # Model fallback
         if self.llama is not None:

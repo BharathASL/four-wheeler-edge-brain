@@ -5,10 +5,12 @@ can enforce deterministic safety rules.
 """
 from typing import Any, Dict
 
-MAX_LINEAR_SPEED_MPS = 0.35
-MAX_ANGULAR_SPEED_DPS = 45.0
-MIN_FRONT_PROXIMITY_M = 0.35
-MIN_SIDE_PROXIMITY_M = 0.20
+from src.config import RobotConfig as _cfg
+
+MAX_LINEAR_SPEED_MPS = _cfg.MAX_LINEAR_SPEED_MPS
+MAX_ANGULAR_SPEED_DPS = _cfg.MAX_ANGULAR_SPEED_DPS
+MIN_FRONT_PROXIMITY_M = _cfg.MIN_FRONT_PROXIMITY_M
+MIN_SIDE_PROXIMITY_M = _cfg.MIN_SIDE_PROXIMITY_M
 
 
 def clamp_movement_action(action: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:

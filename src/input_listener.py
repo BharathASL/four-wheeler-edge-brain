@@ -6,6 +6,7 @@ Separates command input concerns from orchestration logic so future backends
 from typing import Callable, Optional
 
 from src.audio_adapter import AudioAdapter, SpeechToTextAdapter
+from src.config import RobotConfig as _cfg
 
 
 class InputListener:
@@ -42,7 +43,7 @@ class ConsoleInputListener(InputListener):
 
 
 class SpeechInputListener(InputListener):
-    def __init__(self, audio_adapter: AudioAdapter, stt_adapter: SpeechToTextAdapter, duration: float = 3.0):
+    def __init__(self, audio_adapter: AudioAdapter, stt_adapter: SpeechToTextAdapter, duration: float = _cfg.AUDIO_RECORD_DURATION_S):
         self.audio_adapter = audio_adapter
         self.stt_adapter = stt_adapter
         self.duration = duration
