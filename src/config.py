@@ -33,7 +33,7 @@ TELEMETRY_DISABLE_FILE_LOGGING  bool  False                        "1"|"true"|"y
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 # ---------------------------------------------------------------------------
@@ -127,52 +127,28 @@ class RobotConfig:
 
     @classmethod
     def from_env(cls) -> "RobotConfig":
-        """Build a RobotConfig from environment variables.
+            """Build a RobotConfig from environment variables.
 
-        Reads the same variable names that were previously scattered across
-        ``main.py`` and ``src/telemetry.py``. All defaults match the dataclass
-        defaults above so that ``RobotConfig.from_env() == RobotConfig()``
-        when no environment variables are set.
-        """
-        return cls(
-            # Safety — no env-var overrides; kept at dataclass defaults.
-            MAX_LINEAR_SPEED_MPS=0.35,
-            MAX_ANGULAR_SPEED_DPS=45.0,
-            MIN_FRONT_PROXIMITY_M=0.35,
-            MIN_SIDE_PROXIMITY_M=0.20,
-            # Motion — no env-var overrides; kept at dataclass defaults.
-            DEFAULT_FWD_SPEED_MPS=0.5,
-            DEFAULT_BACK_SPEED_MPS=-0.2,
-            DEFAULT_TURN_LEFT_DPS=60.0,
-            DEFAULT_TURN_RIGHT_DPS=-60.0,
-            # Timing
-            MODEL_TIMEOUT_S=_env_float("MODEL_TIMEOUT_S", 5.0),
-            MODEL_COOLDOWN_S=_env_float("MODEL_COOLDOWN_SECONDS", 2.0),
-            # Battery — no env-var overrides; kept at dataclass defaults.
-            BATTERY_TICK_S=1.0,
-            BATTERY_DRAIN_STEP=1,
-            BATTERY_CHARGE_STEP=2,
-            BATTERY_LOW_THRESHOLD=20,
-            WATCHDOG_TICK_S=0.5,
-            WATCHDOG_TIMEOUT_S=60.0,
-            # Audio — no env-var overrides; kept at dataclass defaults.
-            AUDIO_RECORD_DURATION_S=3.0,
-            # Telemetry
-            LOG_DIR=_env_str("TELEMETRY_LOG_DIR", "data/logs"),
-            LOG_MAX_BYTES=_env_int("TELEMETRY_LOG_MAX_BYTES", 1_048_576),
-            LOG_BACKUP_COUNT=_env_int("TELEMETRY_LOG_BACKUP_COUNT", 3),
-            DISABLE_FILE_LOGGING=_env_bool("TELEMETRY_DISABLE_FILE_LOGGING", False),
-            # Model / Memory
-            MODEL_MODE=_env_str("MODEL_MODE", "mock"),
-            MODEL_PATH=_env_str("MODEL_PATH", ""),
-            LLAMA_LIB_PATH=_env_str("LLAMA_LIB_PATH", ""),
-            MEMORY_DB_PATH=_env_str("MEMORY_DB_PATH", "data/conversations.sqlite"),
-            MEMORY_RETRIEVAL_MODE=_env_str("MEMORY_RETRIEVAL_MODE", "fts"),
-            SEMANTIC_BACKEND=_env_str("SEMANTIC_BACKEND", "auto"),
-            # Chat — no env-var overrides; kept at dataclass defaults.
-            CHAT_HISTORY_TURNS=4,
-            RETRIEVAL_TURNS=3,
-        )
+            Only fields that have corresponding environment variables are read from
+            the environment. All other fields keep their dataclass defaults, so the
+            source of truth for every constant is exactly one place.
+            """
+            defaults = cls()
+            return replace(
+                defaults,
+                MODEL_TIMEOUT_S=_env_float("MODEL_TIMEOUT_S", defaults.MODEL_TIMEOUT_S),
+                MODEL_COOLDOWN_S=_env_float("MODEL_COOLDOWN_SECONDS", defaults.MODEL_COOLDOWN_S),
+                LOG_DIR=_env_str("TELEMETRY_LOG_DIR", defaults.LOG_DIR),
+                LOG_MAX_BYTES=_env_int("TELEMETRY_LOG_MAX_BYTES", defaults.LOG_MAX_BYTES),
+                LOG_BACKUP_COUNT=_env_int("TELEMETRY_LOG_BACKUP_COUNT", defaults.LOG_BACKUP_COUNT),
+                DISABLE_FILE_LOGGING=_env_bool("TELEMETRY_DISABLE_FILE_LOGGING", defaults.DISABLE_FILE_LOGGING),
+                MODEL_MODE=_env_str("MODEL_MODE", defaults.MODEL_MODE),
+                MODEL_PATH=_env_str("MODEL_PATH", defaults.MODEL_PATH),
+                LLAMA_LIB_PATH=_env_str("LLAMA_LIB_PATH", defaults.LLAMA_LIB_PATH),
+                MEMORY_DB_PATH=_env_str("MEMORY_DB_PATH", defaults.MEMORY_DB_PATH),
+                MEMORY_RETRIEVAL_MODE=_env_str("MEMORY_RETRIEVAL_MODE", defaults.MEMORY_RETRIEVAL_MODE),
+                SEMANTIC_BACKEND=_env_str("SEMANTIC_BACKEND", defaults.SEMANTIC_BACKEND),
+            )
 
 
 __all__ = ["RobotConfig"]

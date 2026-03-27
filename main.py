@@ -111,6 +111,7 @@ def simulate_loop(
     model_path: str = "",
     llama_lib_path: str = "",
     strict_model: bool = False,
+    cfg: RobotConfig | None = None,
 ):
     from src.background_tasks import BatteryBackgroundTask, CommandWatchdogTask
     from src.state_manager import StateManager
@@ -119,8 +120,10 @@ def simulate_loop(
     from src.model_rate_limiter import ModelRateLimiter
     from src.action_executor import ActionExecutor
 
-    logger = init_telemetry("phase1_poc")
-    model_cooldown_seconds = max(0.0, RobotConfig.from_env().MODEL_COOLDOWN_S)
+    if cfg is None:
+        cfg = RobotConfig.from_env()
+    logger = init_telemetry("phase1_poc", cfg=cfg)
+    model_cooldown_seconds = max(0.0, cfg.MODEL_COOLDOWN_S)
     state = StateManager()
     llama, effective_mode = _build_llama_adapter(
         model_mode=model_mode,
@@ -219,6 +222,7 @@ def chat_loop(
     memory_db_path: str = "data/conversations.sqlite",
     retrieval_mode: str = "fts",
     semantic_backend: str = "auto",
+    cfg: RobotConfig | None = None,
 ):
     from src.chat_behavior import (
         MODEL_COOLDOWN_REPLY,
@@ -232,8 +236,10 @@ def chat_loop(
     from src.model_rate_limiter import ModelRateLimiter
     from src.semantic_memory import SemanticMemoryIndex
 
-    logger = init_telemetry("phase1_chat")
-    model_cooldown_seconds = max(0.0, RobotConfig.from_env().MODEL_COOLDOWN_S)
+    if cfg is None:
+        cfg = RobotConfig.from_env()
+    logger = init_telemetry("phase1_chat", cfg=cfg)
+    model_cooldown_seconds = max(0.0, cfg.MODEL_COOLDOWN_S)
     normalized_retrieval_mode = (retrieval_mode or "fts").strip().lower()
     if normalized_retrieval_mode not in {"fts", "semantic", "hybrid"}:
         logger.warning("Unknown retrieval mode=%s; falling back to fts", retrieval_mode)
@@ -392,6 +398,7 @@ def main():
                 memory_db_path=cli_memory_db_path,
                 retrieval_mode=cli_retrieval_mode,
                 semantic_backend=cli_semantic_backend,
+                cfg=cfg,
             )
             return
 
@@ -401,6 +408,7 @@ def main():
             model_path=cli_model_path,
             llama_lib_path=cli_lib_path,
             strict_model=strict_model,
+            cfg=cfg,
         )
 
 

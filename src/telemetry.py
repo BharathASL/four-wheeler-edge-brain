@@ -3,47 +3,38 @@
 This module provides a lightweight wrapper around Python's `logging`.
 """
 import logging
-import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
-from src.config import RobotConfig as _cfg
+from src.config import RobotConfig
 
-DEFAULT_LOG_DIR = Path(_cfg.LOG_DIR)
-DEFAULT_MAX_BYTES = _cfg.LOG_MAX_BYTES
-DEFAULT_BACKUP_COUNT = _cfg.LOG_BACKUP_COUNT
+DEFAULT_LOG_DIR = Path(RobotConfig.LOG_DIR)
+DEFAULT_MAX_BYTES = RobotConfig.LOG_MAX_BYTES
+DEFAULT_BACKUP_COUNT = RobotConfig.LOG_BACKUP_COUNT
 
 
-def _resolve_logfile(name: str, logfile: Optional[str]) -> Optional[Path]:
-    if os.getenv("TELEMETRY_DISABLE_FILE_LOGGING", "0").strip().lower() in {"1", "true", "yes"}:
+def _resolve_logfile(name: str, logfile: Optional[str], cfg: RobotConfig) -> Optional[Path]:
+    if cfg.DISABLE_FILE_LOGGING:
         return None
 
     if logfile:
         path = Path(logfile)
     else:
-        log_dir = Path(os.getenv("TELEMETRY_LOG_DIR", str(DEFAULT_LOG_DIR)))
-        path = log_dir / f"{name}.log"
+        path = Path(cfg.LOG_DIR) / f"{name}.log"
 
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def _log_rotation_settings() -> tuple[int, int]:
-    max_bytes = os.getenv("TELEMETRY_LOG_MAX_BYTES", str(DEFAULT_MAX_BYTES))
-    backup_count = os.getenv("TELEMETRY_LOG_BACKUP_COUNT", str(DEFAULT_BACKUP_COUNT))
-    try:
-        parsed_max_bytes = max(1, int(max_bytes))
-    except ValueError:
-        parsed_max_bytes = DEFAULT_MAX_BYTES
-    try:
-        parsed_backup_count = max(1, int(backup_count))
-    except ValueError:
-        parsed_backup_count = DEFAULT_BACKUP_COUNT
-    return parsed_max_bytes, parsed_backup_count
-
-
-def init_telemetry(name: str = "four_wheeler", level: int = logging.INFO, logfile: Optional[str] = None):
+def init_telemetry(
+    name: str = "four_wheeler",
+    level: int = logging.INFO,
+    logfile: Optional[str] = None,
+    cfg: Optional[RobotConfig] = None,
+):
+    if cfg is None:
+        cfg = RobotConfig.from_env()
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.propagate = False
@@ -52,13 +43,12 @@ def init_telemetry(name: str = "four_wheeler", level: int = logging.INFO, logfil
         ch = logging.StreamHandler()
         ch.setFormatter(fmt)
         logger.addHandler(ch)
-        resolved_logfile = _resolve_logfile(name, logfile)
+        resolved_logfile = _resolve_logfile(name, logfile, cfg)
         if resolved_logfile is not None:
-            max_bytes, backup_count = _log_rotation_settings()
             fh = RotatingFileHandler(
                 resolved_logfile,
-                maxBytes=max_bytes,
-                backupCount=backup_count,
+                maxBytes=max(1, cfg.LOG_MAX_BYTES),
+                backupCount=max(1, cfg.LOG_BACKUP_COUNT),
                 encoding="utf-8",
             )
             fh.setFormatter(fmt)
