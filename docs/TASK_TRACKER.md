@@ -49,7 +49,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Implement Input Listener (always-on loop) | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P0 | None | Dedicated listener module added |
 | Create Phase-1 PoC skeleton (simulated loop) | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P0 | None | Main simulation loop functional |
 | Add central config management (src/config.py or config.yaml) | Phase 1 - Edge Brain (PoC) | ✅ Done | P1 | None | Consolidated scattered env-var constants into src/config.py (RobotConfig dataclass + from_env()) — PR: feature/phase1-central-config-management |
-| Design HTTP/REST API stub for remote command and state query | Phase 1 - Edge Brain (PoC) | 🟡 To do | P1 | None | Architecture doc calls for it; required for Phase 8 remote management |
+| Design HTTP/REST API stub for remote command and state query | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P1 | None | Added local API stub with `/health`, `/state`, and `/command` endpoints, plus CLI/config wiring and test coverage (`feature/phase1-http-api-stub`) |
 | Design conversation state machine for multi-step dialogues | Phase 1 - Edge Brain (PoC) | 🟡 To do | P2 | None | Enable goal sequences (go to kitchen → pick up → return) beyond one-shot commands |
 | Add unknown-command confirmation flow (safe ACTION:IDLE) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Unknown commands now map to safe IDLE |
 | Document Vosk failure modes + retries | Phase 1.1 - Reliability & Safety Hardening | 📝 Done (Documented) | P1 | None | Documented in phase1_1 failure modes doc |
@@ -182,7 +182,7 @@ This file is the source of truth for planning and progress tracking in the repos
 
 | Task | Phase | Status | Priority | Blocked By | Notes |
 |---|---|---|---|---|---|
-| Implement HTTP/REST API for remote command and state query | Phase 8 - Remote Management | 🟡 To do | P1 | None | Architecture doc specifies CLI / HTTP API; required for remote operation |
+| Implement HTTP/REST API for remote command and state query | Phase 8 - Remote Management | 🔵 In progress | P1 | None | Local Phase-1 stub is implemented; remaining work includes auth, service hardening, and broader remote-management surface |
 | Build simple web dashboard (status, battery, logs, last action) | Phase 8 - Remote Management | 🟡 To do | P2 | HTTP API | Read-only dashboard for monitoring robot state remotely |
 | Add structured log shipping (optional: MQTT / local broker) | Phase 8 - Remote Management | 🟡 To do | P2 | None | Central observability for multi-session debug |
 | Define OTA update strategy (git pull + venv refresh or package-based) | Phase 8 - Remote Management | 🟡 To do | P1 | None | Required for updating firmware on deployed Pi without physical access |
@@ -192,11 +192,11 @@ This file is the source of truth for planning and progress tracking in the repos
 ## Top Next Actions
 
 1. ✅ Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1). **Done** — `src/config.py` introduced.
-2. 🟡 Design HTTP/REST API stub for remote command and state query (P1 — Phase 1).
+2. ✅ Design HTTP/REST API stub for remote command and state query (P1 — Phase 1). **Done** — local API endpoints and runtime wiring are implemented.
 3. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
 4. 🟡 Define Phase 1.2 exit criteria (inference running, motors responding to commands) before hardware bring-up closure (P0 — Phase 1.2).
-5. 🟡 Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale when conversation volume grows (P2 — Phase 1.1).
+5. 🔵 Continue Phase 8 HTTP API implementation (auth hardening + operational endpoints) now that the stub exists (P1 — Phase 8).
 
 ---
 
-Last updated: 2026-03-27 (Completed WSL development-device bridge validation for speaker, microphone, and Android camera via DroidCam network fallback; documented usbip webcam instability and refreshed top next actions)
+Last updated: 2026-03-27 (Implemented local HTTP API stub endpoints and runtime wiring; updated Phase 1 and Phase 8 tracker statuses and refreshed top next actions)

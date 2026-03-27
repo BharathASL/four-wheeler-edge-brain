@@ -111,12 +111,16 @@ def simulate_loop(
     model_path: str = "",
     llama_lib_path: str = "",
     strict_model: bool = False,
+    http_api_enabled: bool = False,
+    http_api_host: str = "127.0.0.1",
+    http_api_port: int = 8080,
     cfg: RobotConfig | None = None,
 ):
     from src.background_tasks import BatteryBackgroundTask, CommandWatchdogTask
     from src.state_manager import StateManager
     from src.input_listener import ConsoleInputListener
     from src.decision_engine import DecisionEngine
+    from src.http_api import HttpApiServer
     from src.model_rate_limiter import ModelRateLimiter
     from src.action_executor import ActionExecutor
 
@@ -139,6 +143,7 @@ def simulate_loop(
     )
     execer = ActionExecutor(state_manager=state)
     tts = None
+    api_server = None
     auto_actions = Queue()
 
     def enqueue_auto_action(action):
@@ -162,6 +167,21 @@ def simulate_loop(
     print(f"Model mode: requested={model_mode} active={effective_mode}")
     if enable_tts and tts is None:
         print("TTS requested but unavailable; running without speech")
+
+    if http_api_enabled:
+        def _api_handle_command_text(command: str):
+            return process_command_text(command, state, de, execer)
+
+        api_server = HttpApiServer(
+            host=http_api_host,
+            port=http_api_port,
+            get_state=state.snapshot,
+            handle_command_text=_api_handle_command_text,
+            mode=effective_mode,
+        )
+        api_server.start()
+        print(f"HTTP API stub listening on http://{http_api_host}:{api_server.bound_port}")
+
     battery_task.start()
     watchdog_task.start()
     print("Background battery task started (auto-dock <= 20%)")
@@ -206,6 +226,8 @@ def simulate_loop(
     except KeyboardInterrupt:
         print("exiting")
     finally:
+        if api_server is not None:
+            api_server.stop()
         battery_task.stop()
         watchdog_task.stop()
 
@@ -357,6 +379,9 @@ def main():
         cli_memory_db_path = cfg.MEMORY_DB_PATH
         cli_retrieval_mode = cfg.MEMORY_RETRIEVAL_MODE
         cli_semantic_backend = cfg.SEMANTIC_BACKEND
+        cli_http_api_enabled = cfg.HTTP_API_ENABLED
+        cli_http_api_host = cfg.HTTP_API_HOST
+        cli_http_api_port = cfg.HTTP_API_PORT
 
         for idx, token in enumerate(sys.argv):
             if token == "--model-mode" and idx + 1 < len(sys.argv):
@@ -383,8 +408,18 @@ def main():
                 cli_retrieval_mode = sys.argv[idx + 1]
             if token == "--semantic-backend" and idx + 1 < len(sys.argv):
                 cli_semantic_backend = sys.argv[idx + 1]
+            if token == "--http-host" and idx + 1 < len(sys.argv):
+                cli_http_api_host = sys.argv[idx + 1]
+            if token == "--http-port" and idx + 1 < len(sys.argv):
+                try:
+                    cli_http_api_port = max(1, int(sys.argv[idx + 1]))
+                except ValueError:
+                    print("Invalid --http-port value; defaulting to 8080")
+                    cli_http_api_port = 8080
         if "--benchmark-memory-retrieval" in sys.argv:
             cli_benchmark_memory_retrieval = True
+        if "--http-api" in sys.argv:
+            cli_http_api_enabled = True
 
         if chat_mode:
             chat_loop(
@@ -408,6 +443,9 @@ def main():
             model_path=cli_model_path,
             llama_lib_path=cli_lib_path,
             strict_model=strict_model,
+            http_api_enabled=cli_http_api_enabled,
+            http_api_host=cli_http_api_host,
+            http_api_port=cli_http_api_port,
             cfg=cfg,
         )
 
