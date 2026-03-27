@@ -356,27 +356,8 @@ class ConversationMemoryStore:
             limit=limit,
         )
 
-        # If semantic alone satisfies the limit, return it.
-        if len(semantic_rows) >= limit:
-            return semantic_rows[:limit], False
-
-        # Backfill using FTS or LIKE to reach the requested limit.
-        remaining = limit - len(semantic_rows)
-        if self._fts_enabled:
-            fallback_rows = self._search_relevant_turns_fts(
-                user_id=user_id,
-                query=query,
-                limit=remaining,
-            )
-        else:
-            fallback_rows = self._search_relevant_turns_like(
-                user_id=user_id,
-                query=query,
-                limit=remaining,
-            )
-
-        # Merge semantic and fallback rows, deduplicating by (user, assistant) pair.
-        seen: set = set()
+        # Build a deduplicated semantic-first result set.
+        seen: set[Tuple[Optional[str], Optional[str]]] = set()
         merged: List[Dict[str, str]] = []
 
         for row in semantic_rows:
@@ -385,6 +366,25 @@ class ConversationMemoryStore:
                 continue
             seen.add(key)
             merged.append(row)
+
+        # If semantic rows already satisfy the limit after dedupe, stop here.
+        if len(merged) >= limit:
+            return merged[:limit], False
+
+        # Backfill using FTS or LIKE. We overfetch up to `limit` because fallback
+        # rows may overlap semantic rows and be removed by dedupe.
+        if self._fts_enabled:
+            fallback_rows = self._search_relevant_turns_fts(
+                user_id=user_id,
+                query=query,
+                limit=limit,
+            )
+        else:
+            fallback_rows = self._search_relevant_turns_like(
+                user_id=user_id,
+                query=query,
+                limit=limit,
+            )
 
         for row in fallback_rows:
             key = (row.get("user"), row.get("assistant"))
@@ -395,7 +395,7 @@ class ConversationMemoryStore:
             if len(merged) >= limit:
                 break
 
-        used_fts = len(fallback_rows) > 0
+        used_fts = True
         return merged, used_fts
 
     def _search_relevant_turns_fts(self, user_id: int, query: str, limit: int) -> List[Dict[str, str]]:
