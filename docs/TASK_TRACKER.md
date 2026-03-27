@@ -139,6 +139,10 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added evaluator script with thresholded pass/fail and JSON report |
 | Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Decision engine tests now cover timeout, unavailable runtime, generic error, and malformed output |
 | Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P2 | Migration gate complete | Consider once conversation volume grows beyond simple SQLite recall |
+| Validate WSL development audio input path with Blue Yeti microphone | Bridge - WSL Dev Devices | 🟡 To do | P1 | Current dev devices + WSL audio input path | Confirm the host microphone is reachable from WSL for planned Vosk and input-listener testing |
+| Validate WSL development audio output path through Windows speaker | Bridge - WSL Dev Devices | 🟡 To do | P1 | Current dev devices + WSLg audio output | Confirm pyttsx3 or the chosen dev TTS path can be heard through the Windows-connected speaker |
+| Validate Android phone camera path for WSL development | Bridge - WSL Dev Devices | 🟡 To do | P1 | Android USB webcam mode + Windows/WSL camera visibility | Confirm whether the phone camera appears as a usable capture device for WSL before buying dedicated camera hardware |
+| Document approved WSL development-device workflow for mic, speaker, and camera | Bridge - WSL Dev Devices | 🟡 To do | P1 | Device path validation | Capture the tested Windows-hosted workflow in docs once the Blue Yeti, Windows speaker, and Android camera path are verified |
 | Run Pi bring-up validation and record latency/memory/temperature metrics | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Raspberry Pi hardware | Use existing runbook and script |
 
 ## Phase 1.2 — Pi Hardware Bring-up
@@ -185,12 +189,16 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add health-check endpoint for external watchdog monitoring | Phase 8 - Remote Management | 🟡 To do | P1 | HTTP API | Watchdog can restart service if health-check fails |
 | Document security model (API key, local-network-only, filesystem permissions) | Phase 8 - Remote Management | 🟡 To do | P0 | HTTP API | Must not expose unauthenticated control interface on the network |
 
-## Top 10 Next Actions
+## Top Next Actions
 
 1. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
 2. 🟡 Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale when conversation volume grows (P2 — Phase 1.1).
 3. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
+4. 🟡 Validate WSL development audio input path with Blue Yeti microphone (P1 — Bridge).
+5. 🟡 Validate WSL development audio output path through Windows speaker (P1 — Bridge).
+6. 🟡 Validate Android phone camera path for WSL development (P1 — Bridge).
+7. 🟡 Document approved WSL development-device workflow after validation (P1 — Bridge).
 
 ---
 
-Last updated: 2026-03-27 (Documented Phase 1.2 hardware bring-up in docs/phase1_2/HARDWARE_BRINGUP.md and updated tracker status)
+Last updated: 2026-03-27 (Added WSL development-device bridge tasks for Blue Yeti mic, Windows speaker, and Android phone camera, after documenting Phase 1.2 hardware bring-up)

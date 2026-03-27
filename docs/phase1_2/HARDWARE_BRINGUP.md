@@ -69,7 +69,7 @@ If the Pi has not arrived yet, this guide is still useful for preparing:
 
 Use the same project pattern already documented for development: a Python virtualenv plus `requirements.txt`.
 
-1. Provision the Pi OS.
+1. Provision Ubuntu Server 24.04 on the Pi.
    - Flash Ubuntu Server 24.04 64-bit.
    - Configure hostname, user, SSH, and network during imaging or on first boot.
    - Apply system updates before installing project dependencies.
