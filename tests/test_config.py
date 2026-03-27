@@ -168,7 +168,7 @@ class TestRobotConfigTypeCoercion:
 class TestConfigIntegration:
     def test_safety_constants_match_safety_controller(self):
         """Safety constants exported by safety_controller must come from config."""
-        from src.safety_controller import (
+        from src.core.safety_controller import (
             MAX_LINEAR_SPEED_MPS,
             MAX_ANGULAR_SPEED_DPS,
             MIN_FRONT_PROXIMITY_M,

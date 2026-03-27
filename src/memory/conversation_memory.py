@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
-from src.memory_slots import MemorySlot, extract_slots_from_input
-from src.semantic_memory import SemanticMemoryIndex
+from src.memory.memory_slots import MemorySlot, extract_slots_from_input
+from src.memory.semantic_memory import SemanticMemoryIndex
 
 
 def _query_tokens(query: str) -> List[str]:

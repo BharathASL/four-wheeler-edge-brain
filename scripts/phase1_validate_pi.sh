@@ -59,7 +59,7 @@ run_runtime_inference() {
   python - <<'PY'
 import os
 import time
-from src.llama_adapter import LlamaAdapter
+from src.adapters.llama_adapter import LlamaAdapter
 
 model_path = os.environ["MODEL_PATH"]
 adapter = LlamaAdapter(lib_path=os.environ.get("LLAMA_LIB_PATH"))
@@ -79,8 +79,8 @@ run_decision_engine_check() {
   cd "$ROOT_DIR" || return 1
   python - <<'PY'
 import os
-from src.llama_adapter import LlamaAdapter
-from src.decision_engine import DecisionEngine
+from src.adapters.llama_adapter import LlamaAdapter
+from src.core.decision_engine import DecisionEngine
 
 adapter = LlamaAdapter(lib_path=os.environ.get("LLAMA_LIB_PATH"))
 adapter.load_model(os.environ["MODEL_PATH"])

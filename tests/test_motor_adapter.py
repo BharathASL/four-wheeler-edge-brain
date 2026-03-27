@@ -1,8 +1,8 @@
 import pytest
 
-from src.action_executor import ActionExecutor
-from src.motor_adapter import MockMotorAdapter, PWMMotorAdapter
-from src.state_manager import StateManager
+from src.core.action_executor import ActionExecutor
+from src.adapters.motor_adapter import MockMotorAdapter, PWMMotorAdapter
+from src.core.state_manager import StateManager
 
 
 def test_mock_motor_adapter_records_motion_commands_and_stop():

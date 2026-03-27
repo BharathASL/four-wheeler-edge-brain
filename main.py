@@ -27,13 +27,13 @@ def _build_tts(enabled: bool):
     if not enabled:
         return None
 
-    from src.tts_adapter import Pyttsx3TTSAdapter
+    from src.adapters.tts_adapter import Pyttsx3TTSAdapter
 
     return Pyttsx3TTSAdapter()
 
 
 def _build_llama_adapter(model_mode: str, model_path: str, lib_path: str, strict_model: bool, logger):
-    from src.llama_adapter import LlamaAdapter, MockLlamaAdapter
+    from src.adapters.llama_adapter import LlamaAdapter, MockLlamaAdapter
 
     requested_mode = (model_mode or "mock").strip().lower()
     if requested_mode not in ("mock", "real"):
@@ -116,13 +116,13 @@ def simulate_loop(
     http_api_port: int = 8080,
     cfg: RobotConfig | None = None,
 ):
-    from src.background_tasks import BatteryBackgroundTask, CommandWatchdogTask
-    from src.state_manager import StateManager
-    from src.input_listener import ConsoleInputListener
-    from src.decision_engine import DecisionEngine
-    from src.http_api import HttpApiServer
-    from src.model_rate_limiter import ModelRateLimiter
-    from src.action_executor import ActionExecutor
+    from src.core.background_tasks import BatteryBackgroundTask, CommandWatchdogTask
+    from src.core.state_manager import StateManager
+    from src.io.input_listener import ConsoleInputListener
+    from src.core.decision_engine import DecisionEngine
+    from src.api.http_api import HttpApiServer
+    from src.core.model_rate_limiter import ModelRateLimiter
+    from src.core.action_executor import ActionExecutor
 
     if cfg is None:
         cfg = RobotConfig.from_env()
@@ -246,7 +246,7 @@ def chat_loop(
     semantic_backend: str = "auto",
     cfg: RobotConfig | None = None,
 ):
-    from src.chat_behavior import (
+    from src.io.chat_behavior import (
         MODEL_COOLDOWN_REPLY,
         dedupe_relevant_turns,
         effective_retrieval_limit,
@@ -254,9 +254,9 @@ def chat_loop(
         identify_speaker,
         normalize_personal_fact_for_storage,
     )
-    from src.conversation_memory import ConversationMemoryStore, RetrievalBenchmarkRecorder
-    from src.model_rate_limiter import ModelRateLimiter
-    from src.semantic_memory import SemanticMemoryIndex
+    from src.memory.conversation_memory import ConversationMemoryStore, RetrievalBenchmarkRecorder
+    from src.core.model_rate_limiter import ModelRateLimiter
+    from src.memory.semantic_memory import SemanticMemoryIndex
 
     if cfg is None:
         cfg = RobotConfig.from_env()

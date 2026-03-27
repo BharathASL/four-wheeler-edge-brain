@@ -1,4 +1,4 @@
-from src.chat_behavior import (
+from src.io.chat_behavior import (
     MODEL_COOLDOWN_REPLY,
     clean_chat_reply,
     dedupe_relevant_turns,
@@ -17,9 +17,9 @@ from src.chat_behavior import (
     rank_facts_for_query,
     sanitize_user_facing_reply,
 )
-from src.conversation_memory import ConversationMemoryStore
-from src.input_sanitizer import sanitize_for_model_prompt
-from src.model_rate_limiter import ModelRateLimiter
+from src.memory.conversation_memory import ConversationMemoryStore
+from src.io.input_sanitizer import sanitize_for_model_prompt
+from src.core.model_rate_limiter import ModelRateLimiter
 
 
 class _FakeLowInfoLlama:

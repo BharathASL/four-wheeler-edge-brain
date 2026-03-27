@@ -1,5 +1,5 @@
-from src.audio_adapter import MockAudioAdapter, MockSpeechToTextAdapter
-from src.input_listener import ConsoleInputListener, SpeechInputListener
+from src.adapters.audio_adapter import MockAudioAdapter, MockSpeechToTextAdapter
+from src.io.input_listener import ConsoleInputListener, SpeechInputListener
 
 
 def test_console_listener_reads_command(monkeypatch):

@@ -1,7 +1,7 @@
 import time
 
-from src.background_tasks import BatteryBackgroundTask
-from src.state_manager import StateManager
+from src.core.background_tasks import BatteryBackgroundTask
+from src.core.state_manager import StateManager
 
 
 def test_battery_task_drains_when_not_charging(poll):

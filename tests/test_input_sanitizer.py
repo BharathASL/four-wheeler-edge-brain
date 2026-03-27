@@ -1,4 +1,4 @@
-from src.input_sanitizer import sanitize_for_model_prompt
+from src.io.input_sanitizer import sanitize_for_model_prompt
 
 
 def test_sanitize_for_model_prompt_neutralizes_role_markers():

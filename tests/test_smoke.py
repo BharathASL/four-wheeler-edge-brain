@@ -1,11 +1,11 @@
 def test_smoke_flow():
-    from src.llama_adapter import MockLlamaAdapter
-    from src.audio_adapter import MockAudioAdapter
-    from src.camera_adapter import MockCameraAdapter
-    from src.tts_adapter import MockTTSAdapter
-    from src.state_manager import StateManager
-    from src.decision_engine import DecisionEngine
-    from src.action_executor import ActionExecutor
+    from src.adapters.llama_adapter import MockLlamaAdapter
+    from src.adapters.audio_adapter import MockAudioAdapter
+    from src.adapters.camera_adapter import MockCameraAdapter
+    from src.adapters.tts_adapter import MockTTSAdapter
+    from src.core.state_manager import StateManager
+    from src.core.decision_engine import DecisionEngine
+    from src.core.action_executor import ActionExecutor
 
     # initialize components
     state = StateManager()

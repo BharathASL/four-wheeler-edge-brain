@@ -5,7 +5,7 @@ Separates command input concerns from orchestration logic so future backends
 """
 from typing import Callable, Optional
 
-from src.audio_adapter import AudioAdapter, SpeechToTextAdapter
+from src.adapters.audio_adapter import AudioAdapter, SpeechToTextAdapter
 from src.config import RobotConfig as _cfg
 
 

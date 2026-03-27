@@ -1,5 +1,5 @@
-from src.conversation_memory import ConversationMemoryStore, RetrievalBenchmarkRecorder
-from src.semantic_memory import InMemorySemanticBackend, SemanticMemoryIndex
+from src.memory.conversation_memory import ConversationMemoryStore, RetrievalBenchmarkRecorder
+from src.memory.semantic_memory import InMemorySemanticBackend, SemanticMemoryIndex
 
 
 class _FakeEncoder:
