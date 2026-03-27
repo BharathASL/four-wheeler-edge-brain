@@ -1,8 +1,8 @@
 
-from src.llama_adapter import MockLlamaAdapter
-from src.model_rate_limiter import ModelRateLimiter
-from src.state_manager import StateManager
-from src.decision_engine import DecisionEngine
+from src.adapters.llama_adapter import MockLlamaAdapter
+from src.core.model_rate_limiter import ModelRateLimiter
+from src.core.state_manager import StateManager
+from src.core.decision_engine import DecisionEngine
 
 
 class _TimeoutLlama:

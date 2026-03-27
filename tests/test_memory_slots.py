@@ -1,4 +1,4 @@
-from src.memory_slots import (
+from src.memory.memory_slots import (
     apply_slot_update,
     detect_session_directive,
     detect_unsafe_memory_input,

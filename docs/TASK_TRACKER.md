@@ -194,9 +194,17 @@ This file is the source of truth for planning and progress tracking in the repos
 1. ✅ Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1). **Done** — `src/config.py` introduced.
 2. ✅ Design HTTP/REST API stub for remote command and state query (P1 — Phase 1). **Done** — local API endpoints and runtime wiring are implemented.
 3. ✅ Define Phase 1.2 exit criteria before hardware bring-up closure (P0 — Phase 1.2). **Done** — objective gates documented in `HARDWARE_BRINGUP.md` and mapped in `PI_VALIDATION_RUNBOOK.md`.
-4. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
-5. 🔵 Continue Phase 8 HTTP API implementation (auth hardening + operational endpoints) now that the stub exists (P1 — Phase 8).
+4. ✅ Restructure `src/` from flat layout into subpackages (`adapters/`, `core/`, `memory/`, `api/`, `io/`). **Done** — all imports updated, 175 tests passing (`feature/code-structure-cleanup`).
+5. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
+6. 🔵 Continue Phase 8 HTTP API implementation (auth hardening + operational endpoints) now that the stub exists (P1 — Phase 8).
+
+## Infrastructure & Housekeeping
+
+| Task | Phase | Status | Priority | Blocked By | Notes |
+|---|---|---|---|---|---|
+| Restructure src/ from flat layout into subpackages | Infrastructure | ✅ Done (Implemented) | P1 | None | Moved 18 modules into `src/adapters/`, `src/core/`, `src/memory/`, `src/api/`, `src/io/`; all imports updated; 175 tests passing (`feature/code-structure-cleanup`) |
+| Remove accidentally committed research notes from repo root | Infrastructure | ✅ Done (Implemented) | P2 | None | Deleted `chaatgpt-report.md` and `gemini-response` from root; were never committed so removed from working tree |
 
 ---
 
-Last updated: 2026-03-27 (Implemented local HTTP API stub endpoints and runtime wiring; updated Phase 1 and Phase 8 tracker statuses and refreshed top next actions)
+Last updated: 2026-03-27 (Restructured src/ into subpackages; removed junk root files; 175 tests passing)

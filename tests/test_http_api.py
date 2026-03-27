@@ -4,10 +4,10 @@ import urllib.error
 import urllib.request
 
 from main import process_command_text
-from src.action_executor import ActionExecutor
-from src.decision_engine import DecisionEngine
-from src.http_api import HttpApiServer
-from src.state_manager import StateManager
+from src.core.action_executor import ActionExecutor
+from src.core.decision_engine import DecisionEngine
+from src.api.http_api import HttpApiServer
+from src.core.state_manager import StateManager
 
 
 def _free_port() -> int:

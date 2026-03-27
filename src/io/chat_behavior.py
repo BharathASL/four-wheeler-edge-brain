@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 from typing import Callable, Dict, List, Mapping, Sequence, Tuple
 
-from src.input_sanitizer import sanitize_for_model_prompt
-from src.memory_slots import (
+from src.io.input_sanitizer import sanitize_for_model_prompt
+from src.memory.memory_slots import (
     describe_missing_slot,
     detect_session_directive,
     detect_unsafe_memory_input,
@@ -16,7 +16,7 @@ from src.memory_slots import (
     format_memory_slot_for_reply,
     join_slot_phrases,
 )
-from src.model_rate_limiter import ModelRateLimiter
+from src.core.model_rate_limiter import ModelRateLimiter
 
 
 ChatTurn = Dict[str, str]

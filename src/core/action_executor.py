@@ -5,7 +5,7 @@ the executor logs and returns simulated results.
 """
 from typing import Dict, Any
 
-from src.safety_controller import clamp_movement_action
+from src.core.safety_controller import clamp_movement_action
 
 
 class ActionExecutor:

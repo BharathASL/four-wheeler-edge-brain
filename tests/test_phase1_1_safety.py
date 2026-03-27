@@ -1,8 +1,8 @@
 import time
 
-from src.action_executor import ActionExecutor
-from src.background_tasks import CommandWatchdogTask
-from src.state_manager import StateManager
+from src.core.action_executor import ActionExecutor
+from src.core.background_tasks import CommandWatchdogTask
+from src.core.state_manager import StateManager
 
 
 def test_move_is_clamped_to_max_speed():

@@ -1,4 +1,4 @@
-from src.llama_adapter import MockLlamaAdapter, LlamaAdapter
+from src.adapters.llama_adapter import MockLlamaAdapter, LlamaAdapter
 
 
 class _FakeChatLlama:

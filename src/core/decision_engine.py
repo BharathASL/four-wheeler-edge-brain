@@ -6,10 +6,10 @@ minimal for Phase‑1 and suitable for unit testing with mocked adapters.
 """
 from typing import Dict, Any
 
-from src.chat_behavior import sanitize_user_facing_reply
+from src.io.chat_behavior import sanitize_user_facing_reply
 from src.config import RobotConfig as _cfg
-from src.input_sanitizer import sanitize_for_model_prompt
-from src.model_rate_limiter import ModelRateLimiter
+from src.io.input_sanitizer import sanitize_for_model_prompt
+from src.core.model_rate_limiter import ModelRateLimiter
 
 
 class DecisionEngine:

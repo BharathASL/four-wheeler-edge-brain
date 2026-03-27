@@ -1,4 +1,4 @@
-from src.semantic_memory import HashingSemanticEncoder, InMemorySemanticBackend, SemanticMemoryIndex
+from src.memory.semantic_memory import HashingSemanticEncoder, InMemorySemanticBackend, SemanticMemoryIndex
 
 
 class _SemanticTestEncoder:
