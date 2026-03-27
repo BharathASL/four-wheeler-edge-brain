@@ -139,10 +139,10 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add AI evaluation harness (prompt set + expected action classes + report) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Added evaluator script with thresholded pass/fail and JSON report |
 | Add failure-injection tests (timeout/model unavailable/malformed output) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Decision engine tests now cover timeout, unavailable runtime, generic error, and malformed output |
 | Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale | Phase 1.1 - Reliability & Safety Hardening | 🟡 To do | P2 | Migration gate complete | Consider once conversation volume grows beyond simple SQLite recall |
-| Validate WSL development audio input path with Blue Yeti microphone | Bridge - WSL Dev Devices | 🟡 To do | P1 | Current dev devices + WSL audio input path | Confirm the host microphone is reachable from WSL for planned Vosk and input-listener testing |
-| Validate WSL development audio output path through Windows speaker | Bridge - WSL Dev Devices | 🟡 To do | P1 | Current dev devices + WSLg audio output | Confirm pyttsx3 or the chosen dev TTS path can be heard through the Windows-connected speaker |
-| Validate Android phone camera path for WSL development | Bridge - WSL Dev Devices | 🟡 To do | P1 | Android USB webcam mode + Windows/WSL camera visibility | Confirm whether the phone camera appears as a usable capture device for WSL before buying dedicated camera hardware |
-| Document approved WSL development-device workflow for mic, speaker, and camera | Bridge - WSL Dev Devices | 🟡 To do | P1 | Device path validation | Capture the tested Windows-hosted workflow in docs once the Blue Yeti, Windows speaker, and Android camera path are verified |
+| Validate WSL development audio input path with Blue Yeti microphone | Bridge - WSL Dev Devices | ✅ Done (Implemented) | P1 | None | Validated on 2026-03-27 through WSLg Pulse `RDPSource`; Linux-side capture works and recorded spoken audio shows real signal levels, but the Blue Yeti is exposed generically through Windows audio routing rather than by device name |
+| Validate WSL development audio output path through Windows speaker | Bridge - WSL Dev Devices | ✅ Done (Implemented) | P1 | None | Validated on 2026-03-27 in WSLg after installing ALSA/Pulse client packages and routing ALSA default output to Pulse; current pyttsx3/espeak-ng speech is audible but rough |
+| Validate Android phone camera path for WSL development | Bridge - WSL Dev Devices | ✅ Done (Implemented) | P1 | None | Validated on 2026-03-27 using Android phone DroidCam network stream from WSL (`http://192.168.1.2:4747/video`) with successful one-frame capture to `/tmp/droidcam-test.jpg`; direct Android USBIP webcam streaming still unstable in this environment |
+| Document approved WSL development-device workflow for mic, speaker, and camera | Bridge - WSL Dev Devices | ✅ Done (Implemented) | P1 | None | Approved development workflow documented: WSLg default-routed speaker + mic paths validated, and Android camera validated via DroidCam network stream fallback while USBIP webcam streaming remains optional/troubleshooting only |
 | Run Pi bring-up validation and record latency/memory/temperature metrics | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Raspberry Pi hardware | Use existing runbook and script |
 
 ## Phase 1.2 — Pi Hardware Bring-up
@@ -192,13 +192,11 @@ This file is the source of truth for planning and progress tracking in the repos
 ## Top Next Actions
 
 1. 🟡 Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1).
-2. 🟡 Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale when conversation volume grows (P2 — Phase 1.1).
+2. 🟡 Design HTTP/REST API stub for remote command and state query (P1 — Phase 1).
 3. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
-4. 🟡 Validate WSL development audio input path with Blue Yeti microphone (P1 — Bridge).
-5. 🟡 Validate WSL development audio output path through Windows speaker (P1 — Bridge).
-6. 🟡 Validate Android phone camera path for WSL development (P1 — Bridge).
-7. 🟡 Document approved WSL development-device workflow after validation (P1 — Bridge).
+4. 🟡 Define Phase 1.2 exit criteria (inference running, motors responding to commands) before hardware bring-up closure (P0 — Phase 1.2).
+5. 🟡 Evaluate semantic memory backend (FAISS/vector DB) for retrieval at scale when conversation volume grows (P2 — Phase 1.1).
 
 ---
 
-Last updated: 2026-03-27 (Added WSL development-device bridge tasks for Blue Yeti mic, Windows speaker, and Android phone camera, after documenting Phase 1.2 hardware bring-up)
+Last updated: 2026-03-27 (Completed WSL development-device bridge validation for speaker, microphone, and Android camera via DroidCam network fallback; documented usbip webcam instability and refreshed top next actions)
