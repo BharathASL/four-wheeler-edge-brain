@@ -44,6 +44,12 @@ class TestRobotConfigDefaults:
         assert cfg.LOG_BACKUP_COUNT == 3
         assert cfg.DISABLE_FILE_LOGGING is False
 
+    def test_http_api_defaults(self):
+        cfg = RobotConfig()
+        assert cfg.HTTP_API_ENABLED is False
+        assert cfg.HTTP_API_HOST == "127.0.0.1"
+        assert cfg.HTTP_API_PORT == 8080
+
     def test_model_memory_defaults(self):
         cfg = RobotConfig()
         assert cfg.MODEL_MODE == "mock"
@@ -67,6 +73,7 @@ class TestRobotConfigFromEnv:
             "MODEL_COOLDOWN_SECONDS", "MODEL_TIMEOUT_S",
             "TELEMETRY_LOG_DIR", "TELEMETRY_LOG_MAX_BYTES",
             "TELEMETRY_LOG_BACKUP_COUNT", "TELEMETRY_DISABLE_FILE_LOGGING",
+            "HTTP_API_ENABLED", "HTTP_API_HOST", "HTTP_API_PORT",
         ]:
             monkeypatch.delenv(key, raising=False)
         assert RobotConfig.from_env() == RobotConfig()
@@ -111,6 +118,18 @@ class TestRobotConfigFromEnv:
         monkeypatch.setenv("TELEMETRY_LOG_BACKUP_COUNT", "5")
         assert RobotConfig.from_env().LOG_BACKUP_COUNT == 5
 
+    def test_env_http_api_enabled(self, monkeypatch):
+        monkeypatch.setenv("HTTP_API_ENABLED", "1")
+        assert RobotConfig.from_env().HTTP_API_ENABLED is True
+
+    def test_env_http_api_host(self, monkeypatch):
+        monkeypatch.setenv("HTTP_API_HOST", "0.0.0.0")
+        assert RobotConfig.from_env().HTTP_API_HOST == "0.0.0.0"
+
+    def test_env_http_api_port(self, monkeypatch):
+        monkeypatch.setenv("HTTP_API_PORT", "9090")
+        assert RobotConfig.from_env().HTTP_API_PORT == 9090
+
     @pytest.mark.parametrize("val", ["1", "true", "yes", "TRUE", "YES"])
     def test_env_disable_file_logging_truthy(self, monkeypatch, val):
         monkeypatch.setenv("TELEMETRY_DISABLE_FILE_LOGGING", val)
@@ -136,6 +155,10 @@ class TestRobotConfigTypeCoercion:
     def test_invalid_int_falls_back_to_default(self, monkeypatch):
         monkeypatch.setenv("TELEMETRY_LOG_BACKUP_COUNT", "not_an_int")
         assert RobotConfig.from_env().LOG_BACKUP_COUNT == 3
+
+    def test_invalid_http_port_falls_back_to_default(self, monkeypatch):
+        monkeypatch.setenv("HTTP_API_PORT", "bad_port")
+        assert RobotConfig.from_env().HTTP_API_PORT == 8080
 
     def test_bool_yes_uppercase(self, monkeypatch):
         monkeypatch.setenv("TELEMETRY_DISABLE_FILE_LOGGING", "YES")

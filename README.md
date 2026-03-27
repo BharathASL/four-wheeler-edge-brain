@@ -62,6 +62,9 @@ Environment variables (all read once at startup via `RobotConfig.from_env()`):
 | `TELEMETRY_LOG_MAX_BYTES` | `1048576` | Max log file size before rotation |
 | `TELEMETRY_LOG_BACKUP_COUNT` | `3` | Number of backup log files |
 | `TELEMETRY_DISABLE_FILE_LOGGING` | `0` | Set to `1`, `true`, or `yes` to disable file logs |
+| `HTTP_API_ENABLED` | `0` | Set to `1`, `true`, or `yes` to enable local HTTP API stub |
+| `HTTP_API_HOST` | `127.0.0.1` | HTTP API bind host |
+| `HTTP_API_PORT` | `8080` | HTTP API bind port |
 
 Environment-variable example:
 
@@ -89,6 +92,12 @@ Optional: enable text-to-speech output:
 
 ```bash
 python main.py --tts
+```
+
+Optional: enable local HTTP API stub (`/health`, `/state`, `/command`):
+
+```bash
+python main.py --http-api --http-host 127.0.0.1 --http-port 8080
 ```
 
 Test direct chat capabilities (bypasses action mapping and prints model text):
