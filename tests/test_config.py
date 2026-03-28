@@ -41,6 +41,15 @@ class TestRobotConfigDefaults:
         assert cfg.STT_SAMPLE_RATE_HZ == 16000
         assert cfg.STT_MAX_RETRIES == 2
         assert cfg.STT_RETRY_BACKOFF_S == 0.3
+        assert cfg.STT_CONFIDENCE_THRESHOLD == 0.7
+        assert cfg.STT_REPROMPT_ON_REJECT is True
+    def test_env_stt_confidence_threshold(self, monkeypatch):
+        monkeypatch.setenv("STT_CONFIDENCE_THRESHOLD", "0.42")
+        assert RobotConfig.from_env().STT_CONFIDENCE_THRESHOLD == 0.42
+
+    def test_env_stt_reprompt_on_reject(self, monkeypatch):
+        monkeypatch.setenv("STT_REPROMPT_ON_REJECT", "0")
+        assert RobotConfig.from_env().STT_REPROMPT_ON_REJECT is False
 
     def test_telemetry_defaults(self):
         cfg = RobotConfig()

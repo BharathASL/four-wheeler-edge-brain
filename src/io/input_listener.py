@@ -43,16 +43,23 @@ class ConsoleInputListener(InputListener):
 
 
 class SpeechInputListener(InputListener):
-    def __init__(self, audio_adapter: AudioAdapter, stt_adapter: SpeechToTextAdapter, duration: float = _cfg.AUDIO_RECORD_DURATION_S):
+    def __init__(self, audio_adapter: AudioAdapter, stt_adapter: SpeechToTextAdapter, duration: float = _cfg.AUDIO_RECORD_DURATION_S, confidence_threshold: float = None, reprompt_on_reject: bool = None):
         self.audio_adapter = audio_adapter
         self.stt_adapter = stt_adapter
         self.duration = duration
         self._pending_error: Optional[str] = None
+        # Use config defaults if not provided
+        self.confidence_threshold = confidence_threshold if confidence_threshold is not None else getattr(_cfg, 'STT_CONFIDENCE_THRESHOLD', 0.7)
+        self.reprompt_on_reject = reprompt_on_reject if reprompt_on_reject is not None else getattr(_cfg, 'STT_REPROMPT_ON_REJECT', True)
 
     def poll_once(self) -> Optional[str]:
         try:
             audio_data = self.audio_adapter.record(self.duration)
-            text = self.stt_adapter.transcribe(audio_data).strip()
+            stt_result = self.stt_adapter.transcribe(audio_data)
+            text = stt_result.text.strip() if stt_result and stt_result.text else ""
+            confidence = stt_result.confidence if stt_result else None
+            # Print recognized speech and confidence for user feedback
+            print(f"[STT] Recognized: '{text}' (confidence: {confidence})")
         except TimeoutError:
             self._pending_error = "STT_TIMEOUT"
             return None
@@ -65,6 +72,15 @@ class SpeechInputListener(InputListener):
 
         if not text:
             return None
+
+        # Confidence gating
+        if confidence is not None and confidence < self.confidence_threshold:
+            self._pending_error = "STT_LOW_CONFIDENCE"
+            if self.reprompt_on_reject:
+                return None  # Re-prompt user
+            else:
+                return ""  # No-op fallback
+
         self._pending_error = None
         return text
 

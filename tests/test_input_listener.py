@@ -1,4 +1,4 @@
-from src.adapters.audio_adapter import MockAudioAdapter, MockSpeechToTextAdapter
+from src.adapters.audio_adapter import MockAudioAdapter, MockSpeechToTextAdapter, STTResult
 from src.io.input_listener import ConsoleInputListener, SpeechInputListener
 
 
@@ -23,25 +23,33 @@ def test_console_listener_maps_eof_to_exit(monkeypatch):
     assert listener.poll_once() == "exit"
 
 
-def test_speech_listener_transcribes_audio_once():
     listener = SpeechInputListener(
         audio_adapter=MockAudioAdapter(),
-        stt_adapter=MockSpeechToTextAdapter(response="dock now"),
+        stt_adapter=MockSpeechToTextAdapter(response="dock now", confidence=0.95),
         duration=1.5,
+        confidence_threshold=0.7,
     )
 
     assert listener.poll_once() == "dock now"
     assert listener.take_error() is None
 
 
-def test_speech_listener_ignores_blank_transcription():
     listener = SpeechInputListener(
         audio_adapter=MockAudioAdapter(),
-        stt_adapter=MockSpeechToTextAdapter(response="   "),
+        stt_adapter=MockSpeechToTextAdapter(response="   ", confidence=0.9),
     )
 
     assert listener.poll_once() is None
     assert listener.take_error() is None
+def test_speech_listener_rejects_low_confidence():
+    listener = SpeechInputListener(
+        audio_adapter=MockAudioAdapter(),
+        stt_adapter=MockSpeechToTextAdapter(response="dock now", confidence=0.3),
+        confidence_threshold=0.7,
+        reprompt_on_reject=True,
+    )
+    assert listener.poll_once() is None
+    assert listener.take_error() == "STT_LOW_CONFIDENCE"
 
 
 def test_speech_listener_maps_runtime_error_to_stt_unavailable():
@@ -111,6 +119,8 @@ def test_speech_listener_preserves_error_across_polls():
 def test_speech_listener_clears_error_on_successful_transcription():
     """A successful transcription must clear any previously pending error."""
 
+
+    from src.adapters.audio_adapter import STTResult
     class _RecoveringSpeechToTextAdapter:
         def __init__(self):
             self._calls = 0
@@ -119,7 +129,7 @@ def test_speech_listener_clears_error_on_successful_transcription():
             self._calls += 1
             if self._calls == 1:
                 raise RuntimeError("first call fails")
-            return "dock now"
+            return STTResult("dock now", 0.95)
 
     listener = SpeechInputListener(
         audio_adapter=MockAudioAdapter(),
