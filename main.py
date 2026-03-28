@@ -69,6 +69,43 @@ def _build_llama_adapter(model_mode: str, model_path: str, lib_path: str, strict
     return llama, "real"
 
 
+def _build_input_listener(
+    stt_mode: str,
+    vosk_model_path: str,
+    cfg: RobotConfig,
+    logger,
+):
+    from src.io.input_listener import ConsoleInputListener, SpeechInputListener
+
+    mode = (stt_mode or "console").strip().lower()
+    if mode == "console":
+        return ConsoleInputListener(prompt="> "), "console"
+
+    if mode == "vosk":
+        try:
+            from src.adapters.audio_adapter import SoundDeviceAudioAdapter, VoskSpeechToTextAdapter
+
+            audio_adapter = SoundDeviceAudioAdapter(sample_rate_hz=cfg.STT_SAMPLE_RATE_HZ, channels=1)
+            stt_adapter = VoskSpeechToTextAdapter(
+                model_path=vosk_model_path,
+                sample_rate_hz=cfg.STT_SAMPLE_RATE_HZ,
+                max_retries=cfg.STT_MAX_RETRIES,
+                retry_backoff_s=cfg.STT_RETRY_BACKOFF_S,
+            )
+            listener = SpeechInputListener(
+                audio_adapter=audio_adapter,
+                stt_adapter=stt_adapter,
+                duration=cfg.AUDIO_RECORD_DURATION_S,
+            )
+            return listener, "vosk"
+        except Exception as exc:
+            logger.warning("STT mode 'vosk' unavailable (%s); falling back to console", exc)
+            return ConsoleInputListener(prompt="> "), "console"
+
+    logger.warning("Unknown STT mode=%s; falling back to console", stt_mode)
+    return ConsoleInputListener(prompt="> "), "console"
+
+
 def process_command_text(user_input, state, decision_engine, executor):
     if not user_input:
         return None
@@ -114,11 +151,12 @@ def simulate_loop(
     http_api_enabled: bool = False,
     http_api_host: str = "127.0.0.1",
     http_api_port: int = 8080,
+    stt_mode: str = "console",
+    vosk_model_path: str = "",
     cfg: RobotConfig | None = None,
 ):
     from src.core.background_tasks import BatteryBackgroundTask, CommandWatchdogTask
     from src.core.state_manager import StateManager
-    from src.io.input_listener import ConsoleInputListener
     from src.core.decision_engine import DecisionEngine
     from src.api.http_api import HttpApiServer
     from src.core.model_rate_limiter import ModelRateLimiter
@@ -136,7 +174,12 @@ def simulate_loop(
         strict_model=strict_model,
         logger=logger,
     )
-    listener = ConsoleInputListener(prompt="> ")
+    listener, effective_stt_mode = _build_input_listener(
+        stt_mode=stt_mode,
+        vosk_model_path=vosk_model_path,
+        cfg=cfg,
+        logger=logger,
+    )
     de = DecisionEngine(
         llama_adapter=llama,
         model_rate_limiter=ModelRateLimiter(model_cooldown_seconds),
@@ -165,6 +208,7 @@ def simulate_loop(
 
     print("Starting Phase-1 PoC simulation (Ctrl-C to stop)")
     print(f"Model mode: requested={model_mode} active={effective_mode}")
+    print(f"Input mode: requested={stt_mode} active={effective_stt_mode}")
     if enable_tts and tts is None:
         print("TTS requested but unavailable; running without speech")
 
@@ -382,6 +426,8 @@ def main():
         cli_http_api_enabled = cfg.HTTP_API_ENABLED
         cli_http_api_host = cfg.HTTP_API_HOST
         cli_http_api_port = cfg.HTTP_API_PORT
+        cli_stt_mode = cfg.STT_MODE
+        cli_vosk_model_path = cfg.VOSK_MODEL_PATH
 
         for idx, token in enumerate(sys.argv):
             if token == "--model-mode" and idx + 1 < len(sys.argv):
@@ -416,6 +462,10 @@ def main():
                 except ValueError:
                     print("Invalid --http-port value; defaulting to 8080")
                     cli_http_api_port = 8080
+            if token == "--stt-mode" and idx + 1 < len(sys.argv):
+                cli_stt_mode = sys.argv[idx + 1]
+            if token == "--vosk-model-path" and idx + 1 < len(sys.argv):
+                cli_vosk_model_path = sys.argv[idx + 1]
         if "--benchmark-memory-retrieval" in sys.argv:
             cli_benchmark_memory_retrieval = True
         if "--http-api" in sys.argv:
@@ -446,6 +496,8 @@ def main():
             http_api_enabled=cli_http_api_enabled,
             http_api_host=cli_http_api_host,
             http_api_port=cli_http_api_port,
+            stt_mode=cli_stt_mode,
+            vosk_model_path=cli_vosk_model_path,
             cfg=cfg,
         )
 
