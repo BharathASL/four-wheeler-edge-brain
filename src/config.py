@@ -25,6 +25,11 @@ MEMORY_RETRIEVAL_MODE           str   "fts"                        "fts"|"semant
 SEMANTIC_BACKEND                str   "auto"                       "auto"|"in-memory"|"faiss"
 MODEL_COOLDOWN_SECONDS          float 2.0                          seconds between model calls
 MODEL_TIMEOUT_S                 float 5.0                          model generation timeout
+STT_MODE                        str   "console"                    "console"|"vosk"
+VOSK_MODEL_PATH                 str   ""                           path to Vosk model directory
+STT_SAMPLE_RATE_HZ              int   16000                        input sample rate for STT
+STT_MAX_RETRIES                 int   2                            retry attempts after first failure
+STT_RETRY_BACKOFF_S             float 0.3                          retry delay in seconds
 TELEMETRY_LOG_DIR               str   "data/logs"
 TELEMETRY_LOG_MAX_BYTES         int   1048576
 TELEMETRY_LOG_BACKUP_COUNT      int   3
@@ -109,6 +114,11 @@ class RobotConfig:
 
     # ── Audio ─────────────────────────────────────────────────────────────────
     AUDIO_RECORD_DURATION_S: float = 3.0
+    STT_MODE: str = "console"
+    VOSK_MODEL_PATH: str = ""
+    STT_SAMPLE_RATE_HZ: int = 16_000
+    STT_MAX_RETRIES: int = 2
+    STT_RETRY_BACKOFF_S: float = 0.3
 
     # ── Telemetry ─────────────────────────────────────────────────────────────
     LOG_DIR: str = "data/logs"
@@ -146,6 +156,11 @@ class RobotConfig:
             defaults,
             MODEL_TIMEOUT_S=_env_float("MODEL_TIMEOUT_S", defaults.MODEL_TIMEOUT_S),
             MODEL_COOLDOWN_S=_env_float("MODEL_COOLDOWN_SECONDS", defaults.MODEL_COOLDOWN_S),
+            STT_MODE=_env_str("STT_MODE", defaults.STT_MODE),
+            VOSK_MODEL_PATH=_env_str("VOSK_MODEL_PATH", defaults.VOSK_MODEL_PATH),
+            STT_SAMPLE_RATE_HZ=max(1, _env_int("STT_SAMPLE_RATE_HZ", defaults.STT_SAMPLE_RATE_HZ)),
+            STT_MAX_RETRIES=max(0, _env_int("STT_MAX_RETRIES", defaults.STT_MAX_RETRIES)),
+            STT_RETRY_BACKOFF_S=max(0.0, _env_float("STT_RETRY_BACKOFF_S", defaults.STT_RETRY_BACKOFF_S)),
             LOG_DIR=_env_str("TELEMETRY_LOG_DIR", defaults.LOG_DIR),
             LOG_MAX_BYTES=_env_int("TELEMETRY_LOG_MAX_BYTES", defaults.LOG_MAX_BYTES),
             LOG_BACKUP_COUNT=_env_int("TELEMETRY_LOG_BACKUP_COUNT", defaults.LOG_BACKUP_COUNT),

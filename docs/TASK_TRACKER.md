@@ -27,6 +27,7 @@ This file is the source of truth for planning and progress tracking in the repos
 
 | Task | Phase | Status | Priority | Blocked By | Notes |
 |---|---|---|---|---|---|
+| **===== Phase 0 - Parts & Setup =====** |  |  |  |  |  |
 | Decide optional sensors (ultrasonic vs 2D LiDAR, IMU) | Phase 0 - Parts & Setup | 🟡 To do | P1 | None | Needed before nav/SLAM architecture freeze |
 | Get docking components (charging contacts + marker: AprilTag or IR beacon) | Phase 0 - Parts & Setup | 🟡 To do | P1 | Hardware purchase | Needed for Phase 7 docking tests |
 | Get USB microphone (Phase 1 testing) | Phase 0 - Parts & Setup | 🟡 To do | P2 | Hardware purchase | Needed for real STT testing |
@@ -39,6 +40,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Select and document motor HAT / driver board | Phase 0 - Parts & Setup | 🟡 To do | P1 | None | e.g., Adafruit Motor HAT, L298N, MDD10A — decision gates Phase 1.2 motor wiring |
 | Document power rail design (Pi power vs motor power separation) | Phase 0 - Parts & Setup | 🟡 To do | P1 | Motor HAT selection | Prevents brownout from motor current spikes on Pi 5V rail |
 | Document OS provisioning and headless Pi boot procedure (flash, hostname, user, SSH, WiFi) | Phase 0 - Parts & Setup | 🟡 To do | P1 | None | Required before Phase 1.2 hardware bring-up; create docs/phase0/PI_SETUP.md |
+| **===== Phase 1 - Edge Brain (PoC) =====** |  |  |  |  |  |
 | Write minimal run instructions (README + scripts) | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P1 | None | README and validation scripts are present |
 | Add output system (TTS + logs) | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P1 | None | pyttsx3 adapter + telemetry integrated |
 | Add background tasks (battery drain + auto-dock trigger) | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P0 | None | Background battery task integrated |
@@ -51,6 +53,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add central config management (src/config.py or config.yaml) | Phase 1 - Edge Brain (PoC) | ✅ Done | P1 | None | Consolidated scattered env-var constants into src/config.py (RobotConfig dataclass + from_env()) — PR: feature/phase1-central-config-management |
 | Design HTTP/REST API stub for remote command and state query | Phase 1 - Edge Brain (PoC) | ✅ Done (Implemented) | P1 | None | Added local API stub with `/health`, `/state`, and `/command` endpoints, plus CLI/config wiring and test coverage (`feature/phase1-http-api-stub`) |
 | Design conversation state machine for multi-step dialogues | Phase 1 - Edge Brain (PoC) | 🟡 To do | P2 | None | Enable goal sequences (go to kitchen → pick up → return) beyond one-shot commands |
+| **===== Phase 1.1 - Reliability & Safety Hardening =====** |  |  |  |  |  |
 | Add unknown-command confirmation flow (safe ACTION:IDLE) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P0 | None | Unknown commands now map to safe IDLE |
 | Document Vosk failure modes + retries | Phase 1.1 - Reliability & Safety Hardening | 📝 Done (Documented) | P1 | None | Documented in phase1_1 failure modes doc |
 | Document llama-cpp failure modes + timeouts | Phase 1.1 - Reliability & Safety Hardening | 📝 Done (Documented) | P1 | None | Documented in phase1_1 failure modes doc |
@@ -77,6 +80,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Define and enforce log rotation / log file size policy | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Telemetry now uses rotating file handlers by default with env-configurable size and retention policy |
 | Add input sanitization (guard against prompt injection) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | None | Shared prompt-input sanitizer now neutralizes role markers and special tokens before decision/chat model calls while preserving deterministic routing and stored history |
 | Add harness trend tracking (historical accuracy + regression alerts) | Phase 1.1 - Reliability & Safety Hardening | ✅ Done (Implemented) | P1 | AI eval harness complete | AI evaluation harness now persists run history and surfaces regression alerts against previous runs |
+| **===== Phase 2 - Mobility =====** |  |  |  |  |  |
 | Wire brain <-> robot command interface (keep ACTION contract) | Phase 2 - Mobility | 🟡 To do | P0 | Hardware integration | Interface should preserve action schema |
 | Implement physical movement system (forward/back/turn) | Phase 2 - Mobility | ⛔ Blocked (Hardware) | P0 | Motor hardware | Start after command interface is stable |
 | Implement src/motor_adapter.py stub (real + mock, following adapter pattern) | Phase 2 - Mobility | ✅ Done (Implemented) | P0 | Motor HAT selection | Added `src/motor_adapter.py` with backend-facing PWM stub, deterministic mock adapter, executor integration, and focused motor/safety tests |
@@ -86,6 +90,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Decide on velocity PID controller (closed-loop vs open-loop) | Phase 2 - Mobility | 🟡 To do | P1 | None | Open-loop drifts; decide whether encoder feedback is in Phase 2 scope |
 | Decide on wheel odometry / encoder feedback for distance estimation | Phase 2 - Mobility | 🟡 To do | P2 | None | Required for accurate navigation in Phase 5; decide now to plan wiring |
 | Define hardware-in-loop testing plan for motor commands | Phase 2 - Mobility | 🟡 To do | P1 | None | Test fixtures for command → motor output before full motion |
+| **===== Phase 3 - Vision =====** |  |  |  |  |  |
 | Set up live video capture (USB/Pi camera) | Phase 3 - Vision | ⛔ Blocked (Hardware) | P1 | Camera hardware | WSL can mock, real capture needs camera |
 | Define target latency + FPS, document CPU/RAM constraints | Phase 3 - Vision | 🟡 To do | P1 | None | Can draft in WSL before hardware run |
 | Select lightweight detector (YOLOv5-nano or MobileNet-SSD) | Phase 3 - Vision | 🟡 To do | P1 | None | Decision needed before integration |
@@ -95,19 +100,22 @@ This file is the source of truth for planning and progress tracking in the repos
 | Decide on object tracking strategy (per-frame only vs SORT/ByteTrack across frames) | Phase 3 - Vision | 🟡 To do | P2 | None | Tracking adds complexity; decide scope before implementation |
 | Plan model export for Pi inference (ONNX / TFLite conversion from YOLOv5-nano) | Phase 3 - Vision | 🟡 To do | P1 | Detector selection | Export and quantize model for ARM inference on Pi |
 | Draft vision data handling and privacy policy | Phase 3 - Vision | 🟡 To do | P2 | None | Indoor home robot captures video; document what is stored/transmitted |
+| **===== Phase 4 - Audio =====** |  |  |  |  |  |
 | Integrate offline STT (Vosk) with mic hardware | Phase 4 - Audio | ⛔ Blocked (Hardware) | P1 | Microphone hardware | Policy/docs done; runtime integration pending |
 | Integrate offline TTS (Piper/Coqui) with speaker hardware | Phase 4 - Audio | ⛔ Blocked (Hardware) | P1 | Speaker hardware | pyttsx3 path exists for dev |
-| Implement real Vosk STT decoder pipeline in audio_adapter.py | Phase 4 - Audio | 🟡 To do | P1 | Microphone hardware | Only a stub exists; implement full Vosk decode + retry logic |
+| Implement real Vosk STT decoder pipeline in audio_adapter.py | Phase 4 - Audio | ✅ Done (Implemented) | P1 | Microphone hardware | Added `VoskSpeechToTextAdapter` + `SoundDeviceAudioAdapter`, runtime STT mode wiring in `main.py`, config/env controls, and tests; verified WSL real mic capture and non-empty live transcript on 2026-03-28 (`feature/phase4-vosk-stt-pipeline`) |
 | Define STT confidence threshold and rejection fallback policy | Phase 4 - Audio | 🟡 To do | P1 | None | Document minimum confidence score to act on; below threshold → re-prompt |
 | Design audio pre-processing pipeline (VAD, noise gate, AGC) | Phase 4 - Audio | 🟡 To do | P1 | None | Improve STT accuracy before decoder; required for reliable voice UX |
 | Finalize TTS voice selection for production (Piper vs Coqui; pyttsx3 is dev-only) | Phase 4 - Audio | 🟡 To do | P1 | None | Decide and document production TTS engine and voice model |
 | Plan and evaluate automatic speaker diarization | Phase 4 - Audio | 🟡 To do | P2 | None | Current speaker ID is manual; evaluate whether auto diarization is in scope |
+| **===== Phase 5 - Autonomous Navigation =====** |  |  |  |  |  |
 | Implement obstacle avoidance logic (ultrasonic or LiDAR) | Phase 5 - Autonomous Navigation | ⛔ Blocked (Hardware) | P0 | Sensor selection + hardware | Depends on Phase 0 sensor decision |
 | Select path planning algorithm (reactive: VFH/potential fields vs deliberative: A*) | Phase 5 - Autonomous Navigation | 🟡 To do | P1 | None | Decision gates navigation implementation; document trade-offs for Pi compute budget |
 | Design sensor fusion architecture (ultrasonic + LiDAR + IMU data integration) | Phase 5 - Autonomous Navigation | 🟡 To do | P1 | Sensor integration (Phase 2.1) | Define fusion policy before implementing planner |
 | Plan waypoint / goal-based navigation system (named locations or coordinate map) | Phase 5 - Autonomous Navigation | 🟡 To do | P1 | None | High-level goals require location abstraction above motion primitives |
 | Design recovery behaviors (stuck detection and recovery maneuvers) | Phase 5 - Autonomous Navigation | 🟡 To do | P1 | None | Define stuck detection heuristics and escape maneuver sequences |
 | Define speed profile / acceleration ramp policy (smooth start/stop) | Phase 5 - Autonomous Navigation | 🟡 To do | P1 | Motor adapter | Prevent wheel slip and tipping; ramp velocity rather than step change |
+| **===== Phase 6 - SLAM / Mapping =====** |  |  |  |  |  |
 | Define acceptable localization error | Phase 6 - SLAM / Mapping | 🟡 To do | P1 | None | Required for SLAM acceptance criteria |
 | Specify map format (occupancy grid / ROS2 map) | Phase 6 - SLAM / Mapping | 🟡 To do | P1 | None | Needed before stack integration |
 | Choose SLAM stack (RTAB-Map or ORB-SLAM2) | Phase 6 - SLAM / Mapping | 🟡 To do | P1 | None | Align with compute budget |
@@ -115,6 +123,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Design map persistence, versioning, and reload-at-startup strategy | Phase 6 - SLAM / Mapping | 🟡 To do | P1 | Map format decision | Without persistence, robot must re-map on every boot |
 | Define loop closure policy for SLAM (re-visiting known areas) | Phase 6 - SLAM / Mapping | 🟡 To do | P1 | SLAM stack choice | Required for accurate long-session mapping |
 | Define initial pose / relocalization strategy after restart | Phase 6 - SLAM / Mapping | 🟡 To do | P1 | Map persistence | How does robot locate itself on a previously built map after power cycle |
+| **===== Phase 7 - Docking & Charging =====** |  |  |  |  |  |
 | Implement return-to-dock when battery low end-to-end | Phase 7 - Docking & Charging | ⛔ Blocked (Hardware) | P0 | Docking hardware | Simulation-only partial behavior exists |
 | Implement dock detection (AprilTag / IR beacon / visual marker) | Phase 7 - Docking & Charging | ⛔ Blocked (Hardware) | P0 | Dock marker hardware | Depends on docking component choice |
 | Plan real BMS integration (I²C BMS or voltage divider for accurate battery state) | Phase 7 - Docking & Charging | 🟡 To do | P1 | None | Simulation uses fake percentage; real integration needs hardware-level monitoring |
@@ -191,12 +200,14 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ## Top Next Actions
 
-1. ✅ Add central config management (src/config.py or config.yaml) to consolidate scattered constants (P1 — Phase 1). **Done** — `src/config.py` introduced.
-2. ✅ Design HTTP/REST API stub for remote command and state query (P1 — Phase 1). **Done** — local API endpoints and runtime wiring are implemented.
-3. ✅ Define Phase 1.2 exit criteria before hardware bring-up closure (P0 — Phase 1.2). **Done** — objective gates documented in `HARDWARE_BRINGUP.md` and mapped in `PI_VALIDATION_RUNBOOK.md`.
-4. ✅ Restructure `src/` from flat layout into subpackages (`adapters/`, `core/`, `memory/`, `api/`, `io/`). **Done** — all imports updated, 175 tests passing (`feature/code-structure-cleanup`).
-5. 🟡 Finalize sensor choice (ultrasonic vs 2D LiDAR, IMU) to unblock Phase 2.1 and Phase 5 architecture (P0 — Phase 2.1).
-6. 🔵 Continue Phase 8 HTTP API implementation (auth hardening + operational endpoints) now that the stub exists (P1 — Phase 8).
+1. ✅ Implement real Vosk STT decoder pipeline in `audio_adapter.py` (P1 — Phase 4 Audio) using the validated WSL dev input path.
+2. 🟡 Define STT confidence threshold and rejection/re-prompt fallback policy (P1 — Phase 4 Audio).
+3. 🟡 Design audio pre-processing pipeline (VAD, noise gate, AGC) for the input path (P1 — Phase 4 Audio).
+4. 🟡 Finalize production TTS voice selection (Piper vs Coqui; pyttsx3 remains dev path) (P1 — Phase 4 Audio).
+5. ⛔ Integrate offline STT (Vosk) with microphone hardware on Raspberry Pi when hardware path is ready (P1 — Phase 4 Audio).
+6. ⛔ Integrate offline TTS (Piper/Coqui) with speaker hardware on Raspberry Pi when hardware path is ready (P1 — Phase 4 Audio).
+7. 🟡 Build conversation state machine (listening -> processing -> responding -> idle) to support voice UX (P1 — Phase 4.5).
+8. ⛔ Run end-to-end voice validation (wake word -> STT -> decision engine -> TTS) after audio hardware integration is complete (P0 — Phase 4.5).
 
 ## Infrastructure & Housekeeping
 
@@ -208,4 +219,4 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ---
 
-Last updated: 2026-03-27 (Restructured src/ into subpackages; removed junk root files; 175 tests passing)
+Last updated: 2026-03-28 (Completed Phase 4 Vosk STT pipeline in WSL: decoder + real audio capture adapters, runtime wiring, config/CLI controls, automated tests, and live mic verification)

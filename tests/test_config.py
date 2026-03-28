@@ -36,6 +36,11 @@ class TestRobotConfigDefaults:
     def test_audio_defaults(self):
         cfg = RobotConfig()
         assert cfg.AUDIO_RECORD_DURATION_S == 3.0
+        assert cfg.STT_MODE == "console"
+        assert cfg.VOSK_MODEL_PATH == ""
+        assert cfg.STT_SAMPLE_RATE_HZ == 16000
+        assert cfg.STT_MAX_RETRIES == 2
+        assert cfg.STT_RETRY_BACKOFF_S == 0.3
 
     def test_telemetry_defaults(self):
         cfg = RobotConfig()
@@ -71,12 +76,33 @@ class TestRobotConfigFromEnv:
             "MODEL_MODE", "MODEL_PATH", "LLAMA_LIB_PATH",
             "MEMORY_DB_PATH", "MEMORY_RETRIEVAL_MODE", "SEMANTIC_BACKEND",
             "MODEL_COOLDOWN_SECONDS", "MODEL_TIMEOUT_S",
+            "STT_MODE", "VOSK_MODEL_PATH", "STT_SAMPLE_RATE_HZ", "STT_MAX_RETRIES", "STT_RETRY_BACKOFF_S",
             "TELEMETRY_LOG_DIR", "TELEMETRY_LOG_MAX_BYTES",
             "TELEMETRY_LOG_BACKUP_COUNT", "TELEMETRY_DISABLE_FILE_LOGGING",
             "HTTP_API_ENABLED", "HTTP_API_HOST", "HTTP_API_PORT",
         ]:
             monkeypatch.delenv(key, raising=False)
         assert RobotConfig.from_env() == RobotConfig()
+
+    def test_env_stt_mode(self, monkeypatch):
+        monkeypatch.setenv("STT_MODE", "vosk")
+        assert RobotConfig.from_env().STT_MODE == "vosk"
+
+    def test_env_vosk_model_path(self, monkeypatch):
+        monkeypatch.setenv("VOSK_MODEL_PATH", "/tmp/vosk-model")
+        assert RobotConfig.from_env().VOSK_MODEL_PATH == "/tmp/vosk-model"
+
+    def test_env_stt_sample_rate(self, monkeypatch):
+        monkeypatch.setenv("STT_SAMPLE_RATE_HZ", "8000")
+        assert RobotConfig.from_env().STT_SAMPLE_RATE_HZ == 8000
+
+    def test_env_stt_max_retries(self, monkeypatch):
+        monkeypatch.setenv("STT_MAX_RETRIES", "4")
+        assert RobotConfig.from_env().STT_MAX_RETRIES == 4
+
+    def test_env_stt_retry_backoff(self, monkeypatch):
+        monkeypatch.setenv("STT_RETRY_BACKOFF_S", "0.5")
+        assert RobotConfig.from_env().STT_RETRY_BACKOFF_S == 0.5
 
     def test_env_model_mode(self, monkeypatch):
         monkeypatch.setenv("MODEL_MODE", "real")
