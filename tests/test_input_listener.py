@@ -23,6 +23,7 @@ def test_console_listener_maps_eof_to_exit(monkeypatch):
     assert listener.poll_once() == "exit"
 
 
+def test_speech_listener_transcribes_audio_once():
     listener = SpeechInputListener(
         audio_adapter=MockAudioAdapter(),
         stt_adapter=MockSpeechToTextAdapter(response="dock now", confidence=0.95),
@@ -34,6 +35,7 @@ def test_console_listener_maps_eof_to_exit(monkeypatch):
     assert listener.take_error() is None
 
 
+def test_speech_listener_ignores_blank_transcription():
     listener = SpeechInputListener(
         audio_adapter=MockAudioAdapter(),
         stt_adapter=MockSpeechToTextAdapter(response="   ", confidence=0.9),
@@ -41,6 +43,8 @@ def test_console_listener_maps_eof_to_exit(monkeypatch):
 
     assert listener.poll_once() is None
     assert listener.take_error() is None
+
+
 def test_speech_listener_rejects_low_confidence():
     listener = SpeechInputListener(
         audio_adapter=MockAudioAdapter(),
@@ -50,6 +54,40 @@ def test_speech_listener_rejects_low_confidence():
     )
     assert listener.poll_once() is None
     assert listener.take_error() == "STT_LOW_CONFIDENCE"
+
+
+def test_speech_listener_rejects_low_confidence_without_reprompt():
+    listener = SpeechInputListener(
+        audio_adapter=MockAudioAdapter(),
+        stt_adapter=MockSpeechToTextAdapter(response="dock now", confidence=0.3),
+        confidence_threshold=0.7,
+        reprompt_on_reject=False,
+    )
+
+    assert listener.poll_once() is None
+    assert listener.take_error() == "STT_LOW_CONFIDENCE"
+
+
+def test_speech_listener_accepts_missing_confidence():
+    listener = SpeechInputListener(
+        audio_adapter=MockAudioAdapter(),
+        stt_adapter=MockSpeechToTextAdapter(response="dock now", confidence=None),
+        confidence_threshold=0.7,
+    )
+
+    assert listener.poll_once() == "dock now"
+    assert listener.take_error() is None
+
+
+def test_speech_listener_threshold_is_inclusive():
+    listener = SpeechInputListener(
+        audio_adapter=MockAudioAdapter(),
+        stt_adapter=MockSpeechToTextAdapter(response="dock now", confidence=0.7),
+        confidence_threshold=0.7,
+    )
+
+    assert listener.poll_once() == "dock now"
+    assert listener.take_error() is None
 
 
 def test_speech_listener_maps_runtime_error_to_stt_unavailable():
@@ -119,8 +157,6 @@ def test_speech_listener_preserves_error_across_polls():
 def test_speech_listener_clears_error_on_successful_transcription():
     """A successful transcription must clear any previously pending error."""
 
-
-    from src.adapters.audio_adapter import STTResult
     class _RecoveringSpeechToTextAdapter:
         def __init__(self):
             self._calls = 0

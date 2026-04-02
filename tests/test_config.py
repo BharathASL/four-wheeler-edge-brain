@@ -199,6 +199,10 @@ class TestRobotConfigTypeCoercion:
         monkeypatch.setenv("TELEMETRY_DISABLE_FILE_LOGGING", "YES")
         assert RobotConfig.from_env().DISABLE_FILE_LOGGING is True
 
+    def test_stt_confidence_threshold_clamped_to_one(self, monkeypatch):
+        monkeypatch.setenv("STT_CONFIDENCE_THRESHOLD", "1.8")
+        assert RobotConfig.from_env().STT_CONFIDENCE_THRESHOLD == 1.0
+
 
 class TestConfigIntegration:
     def test_safety_constants_match_safety_controller(self):

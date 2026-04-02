@@ -178,7 +178,10 @@ class RobotConfig:
             MEMORY_DB_PATH=_env_str("MEMORY_DB_PATH", defaults.MEMORY_DB_PATH),
             MEMORY_RETRIEVAL_MODE=_env_str("MEMORY_RETRIEVAL_MODE", defaults.MEMORY_RETRIEVAL_MODE),
             SEMANTIC_BACKEND=_env_str("SEMANTIC_BACKEND", defaults.SEMANTIC_BACKEND),
-            STT_CONFIDENCE_THRESHOLD=max(0.0, _env_float("STT_CONFIDENCE_THRESHOLD", defaults.STT_CONFIDENCE_THRESHOLD)),
+            STT_CONFIDENCE_THRESHOLD=min(
+                1.0,
+                max(0.0, _env_float("STT_CONFIDENCE_THRESHOLD", defaults.STT_CONFIDENCE_THRESHOLD)),
+            ),
             STT_REPROMPT_ON_REJECT=_env_bool("STT_REPROMPT_ON_REJECT", defaults.STT_REPROMPT_ON_REJECT),
         )
 

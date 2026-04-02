@@ -7,10 +7,14 @@ Keep the interfaces minimal:
 Real adapters should wrap concrete backends; tests should use the mock adapters.
 """
 import json
+import logging
 import os
 import time
 from importlib import import_module
 from typing import Any
+
+
+logger = logging.getLogger(__name__)
 
 
 class AudioAdapter:
@@ -170,9 +174,8 @@ class VoskSpeechToTextAdapter(SpeechToTextAdapter):
         try:
             parsed = json.loads(payload or "{}")
         except Exception:
-            print("[Vosk DEBUG] Failed to parse payload:", payload)
+            logger.warning("vosk_payload_parse_failed payload=%r", payload)
             return STTResult("", None)
-        print(f"[Vosk DEBUG] Full JSON: {parsed}")
         text = str(parsed.get("text", "")).strip()
         # Vosk may provide a 'confidence' field or a 'result' list with word-level confidences
         conf = parsed.get("confidence")
@@ -184,7 +187,8 @@ class VoskSpeechToTextAdapter(SpeechToTextAdapter):
                     conf = sum(confs) / len(confs)
         try:
             conf = float(conf) if conf is not None else None
-        except Exception:
+        except (TypeError, ValueError):
+            logger.warning("vosk_confidence_parse_failed confidence=%r", conf)
             conf = None
         return STTResult(text, conf)
 

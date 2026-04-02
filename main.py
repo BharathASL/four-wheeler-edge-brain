@@ -96,8 +96,8 @@ def _build_input_listener(
                 audio_adapter=audio_adapter,
                 stt_adapter=stt_adapter,
                 duration=cfg.AUDIO_RECORD_DURATION_S,
-                confidence_threshold=getattr(cfg, 'STT_CONFIDENCE_THRESHOLD', 0.7),
-                reprompt_on_reject=getattr(cfg, 'STT_REPROMPT_ON_REJECT', True),
+                confidence_threshold=cfg.STT_CONFIDENCE_THRESHOLD,
+                reprompt_on_reject=cfg.STT_REPROMPT_ON_REJECT,
             )
             return listener, "vosk"
         except Exception as exc:

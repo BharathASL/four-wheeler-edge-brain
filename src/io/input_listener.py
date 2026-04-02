@@ -3,10 +3,14 @@
 Separates command input concerns from orchestration logic so future backends
 (STT, sockets, HTTP) can reuse the same contract.
 """
+import logging
 from typing import Callable, Optional
 
 from src.adapters.audio_adapter import AudioAdapter, SpeechToTextAdapter
 from src.config import RobotConfig as _cfg
+
+
+logger = logging.getLogger(__name__)
 
 
 class InputListener:
@@ -48,9 +52,13 @@ class SpeechInputListener(InputListener):
         self.stt_adapter = stt_adapter
         self.duration = duration
         self._pending_error: Optional[str] = None
-        # Use config defaults if not provided
-        self.confidence_threshold = confidence_threshold if confidence_threshold is not None else getattr(_cfg, 'STT_CONFIDENCE_THRESHOLD', 0.7)
-        self.reprompt_on_reject = reprompt_on_reject if reprompt_on_reject is not None else getattr(_cfg, 'STT_REPROMPT_ON_REJECT', True)
+        defaults = _cfg()
+        self.confidence_threshold = (
+            confidence_threshold if confidence_threshold is not None else defaults.STT_CONFIDENCE_THRESHOLD
+        )
+        self.reprompt_on_reject = (
+            reprompt_on_reject if reprompt_on_reject is not None else defaults.STT_REPROMPT_ON_REJECT
+        )
 
     def poll_once(self) -> Optional[str]:
         try:
@@ -58,8 +66,7 @@ class SpeechInputListener(InputListener):
             stt_result = self.stt_adapter.transcribe(audio_data)
             text = stt_result.text.strip() if stt_result and stt_result.text else ""
             confidence = stt_result.confidence if stt_result else None
-            # Print recognized speech and confidence for user feedback
-            print(f"[STT] Recognized: '{text}' (confidence: {confidence})")
+            logger.debug("stt_recognized text=%r confidence=%r", text, confidence)
         except TimeoutError:
             self._pending_error = "STT_TIMEOUT"
             return None
@@ -73,13 +80,17 @@ class SpeechInputListener(InputListener):
         if not text:
             return None
 
-        # Confidence gating
+        # Confidence gating: confidence=None is accepted by policy.
         if confidence is not None and confidence < self.confidence_threshold:
+            logger.info(
+                "stt_low_confidence text=%r confidence=%s threshold=%s reprompt=%s",
+                text,
+                confidence,
+                self.confidence_threshold,
+                self.reprompt_on_reject,
+            )
             self._pending_error = "STT_LOW_CONFIDENCE"
-            if self.reprompt_on_reject:
-                return None  # Re-prompt user
-            else:
-                return ""  # No-op fallback
+            return None
 
         self._pending_error = None
         return text

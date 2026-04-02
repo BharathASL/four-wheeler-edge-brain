@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from src.adapters import audio_adapter as audio_module
-from src.adapters.audio_adapter import SoundDeviceAudioAdapter, VoskSpeechToTextAdapter, STTResult
+from src.adapters.audio_adapter import STTResult, SoundDeviceAudioAdapter, VoskSpeechToTextAdapter
 
 
 class _FakeRecognizer:
@@ -34,13 +34,13 @@ def test_vosk_adapter_requires_model_path():
         VoskSpeechToTextAdapter(model_path="")
 
 
-def test_vosk_adapter_requires_existing_model_path(tmp_path: Path, monkeypatch):
+def test_vosk_adapter_requires_existing_model_path(tmp_path: Path):
     missing_path = tmp_path / "missing-model-dir"
     with pytest.raises(RuntimeError, match="does not exist"):
         VoskSpeechToTextAdapter(model_path=str(missing_path))
 
 
-
+def test_vosk_adapter_transcribes_final_text(monkeypatch, tmp_path: Path):
     model_dir = tmp_path / "vosk-model"
     model_dir.mkdir(exist_ok=True)
 
@@ -51,6 +51,11 @@ def test_vosk_adapter_requires_existing_model_path(tmp_path: Path, monkeypatch):
 
     assert isinstance(result, STTResult)
     assert result.text == "dock now"
+
+
+def test_vosk_adapter_retries_then_succeeds(monkeypatch, tmp_path: Path):
+    model_dir = tmp_path / "vosk-model"
+    model_dir.mkdir(exist_ok=True)
     attempts = {"count": 0}
 
     class _RetryRecognizer(_FakeRecognizer):
