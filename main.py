@@ -96,6 +96,8 @@ def _build_input_listener(
                 audio_adapter=audio_adapter,
                 stt_adapter=stt_adapter,
                 duration=cfg.AUDIO_RECORD_DURATION_S,
+                confidence_threshold=cfg.STT_CONFIDENCE_THRESHOLD,
+                reprompt_on_reject=cfg.STT_REPROMPT_ON_REJECT,
             )
             return listener, "vosk"
         except Exception as exc:
@@ -123,15 +125,27 @@ def process_listener_once(listener, state, decision_engine, executor):
     listener_error = listener.take_error()
 
     if listener_error:
-        action = {
-            "action": "IDLE",
-            "params": {
-                "reason": listener_error,
-                "confirmation_required": True,
-            },
-        }
-        result = executor.execute(action)
-        return {"input": None, "action": action, "result": result, "error": listener_error}
+        # Special handling for low confidence: treat as no-op, optionally notify user
+        if listener_error == "STT_LOW_CONFIDENCE":
+            action = {
+                "action": "IDLE",
+                "params": {
+                    "reason": "Low STT confidence",
+                    "confirmation_required": False,
+                },
+            }
+            result = executor.execute(action)
+            return {"input": None, "action": action, "result": result, "error": listener_error}
+        else:
+            action = {
+                "action": "IDLE",
+                "params": {
+                    "reason": listener_error,
+                    "confirmation_required": True,
+                },
+            }
+            result = executor.execute(action)
+            return {"input": None, "action": action, "result": result, "error": listener_error}
 
     if not user_input:
         return None

@@ -7,10 +7,14 @@ Keep the interfaces minimal:
 Real adapters should wrap concrete backends; tests should use the mock adapters.
 """
 import json
+import logging
 import os
 import time
 from importlib import import_module
 from typing import Any
+
+
+logger = logging.getLogger(__name__)
 
 
 class AudioAdapter:
@@ -37,20 +41,31 @@ class MockAudioAdapter(AudioAdapter):
         return None
 
 
+
+# --- STTResult: (text, confidence) ---
+class STTResult:
+    def __init__(self, text: str, confidence: float | None = None):
+        self.text = text
+        self.confidence = confidence
+    def __repr__(self):
+        return f"STTResult(text={self.text!r}, confidence={self.confidence!r})"
+
+
 class SpeechToTextAdapter:
-    def transcribe(self, audio_data: bytes) -> str:
-        """Return the recognized text for `audio_data`."""
+    def transcribe(self, audio_data: bytes) -> STTResult:
+        """Return the recognized text and confidence for `audio_data`."""
         raise NotImplementedError()
 
 
 class MockSpeechToTextAdapter(SpeechToTextAdapter):
-    def __init__(self, response: str = "mock transcription"):
+    def __init__(self, response: str = "mock transcription", confidence: float = 1.0):
         self.response = response
+        self.confidence = confidence
         self.transcriptions = []
 
-    def transcribe(self, audio_data: bytes) -> str:
+    def transcribe(self, audio_data: bytes) -> STTResult:
         self.transcriptions.append(audio_data)
-        return self.response
+        return STTResult(self.response, self.confidence)
 
 
 def _load_vosk_runtime() -> Any:
@@ -111,11 +126,7 @@ class SoundDeviceAudioAdapter(AudioAdapter):
 
 
 class VoskSpeechToTextAdapter(SpeechToTextAdapter):
-    """Vosk-backed speech-to-text adapter.
-
-    Expected input is raw PCM bytes at `sample_rate_hz`. The adapter keeps a
-    loaded Vosk model and creates a fresh recognizer per transcription request.
-    """
+    """Vosk-backed speech-to-text adapter with confidence output."""
 
     def __init__(
         self,
@@ -146,29 +157,46 @@ class VoskSpeechToTextAdapter(SpeechToTextAdapter):
         except Exception as exc:
             raise RuntimeError("failed to load Vosk model") from exc
 
-    def _decode_once(self, audio_data: bytes) -> str:
+    def _decode_once(self, audio_data: bytes) -> STTResult:
         recognizer_cls = getattr(self._runtime, "KaldiRecognizer", None)
         if recognizer_cls is None:
             raise RuntimeError("vosk runtime missing KaldiRecognizer class")
 
         recognizer = recognizer_cls(self._model, self.sample_rate_hz)
         accepted = recognizer.AcceptWaveform(audio_data)
+        result_payload = recognizer.Result()
+        final_payload = recognizer.FinalResult()
         if accepted:
-            payload = recognizer.Result()
+            payload = result_payload
         else:
-            payload = recognizer.FinalResult()
+            payload = final_payload
 
         try:
             parsed = json.loads(payload or "{}")
         except Exception:
-            return ""
-        return str(parsed.get("text", "")).strip()
+            logger.warning("vosk_payload_parse_failed payload=%r", payload)
+            return STTResult("", None)
+        text = str(parsed.get("text", "")).strip()
+        # Vosk may provide a 'confidence' field or a 'result' list with word-level confidences
+        conf = parsed.get("confidence")
+        if conf is None and "result" in parsed:
+            words = parsed["result"]
+            if isinstance(words, list) and words:
+                confs = [w.get("conf", 1.0) for w in words if "conf" in w]
+                if confs:
+                    conf = sum(confs) / len(confs)
+        try:
+            conf = float(conf) if conf is not None else None
+        except (TypeError, ValueError):
+            logger.warning("vosk_confidence_parse_failed confidence=%r", conf)
+            conf = None
+        return STTResult(text, conf)
 
-    def transcribe(self, audio_data: bytes) -> str:
+    def transcribe(self, audio_data: bytes) -> STTResult:
         if not isinstance(audio_data, (bytes, bytearray)):
             raise RuntimeError("audio_data must be bytes")
         if not audio_data:
-            return ""
+            return STTResult("", None)
 
         attempts = self.max_retries + 1
         last_error: Exception | None = None
@@ -189,4 +217,5 @@ __all__ = [
     "SpeechToTextAdapter",
     "MockSpeechToTextAdapter",
     "VoskSpeechToTextAdapter",
+    "STTResult",
 ]

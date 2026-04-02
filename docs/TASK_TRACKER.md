@@ -104,7 +104,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Integrate offline STT (Vosk) with mic hardware | Phase 4 - Audio | ⛔ Blocked (Hardware) | P1 | Microphone hardware | Policy/docs done; runtime integration pending |
 | Integrate offline TTS (Piper/Coqui) with speaker hardware | Phase 4 - Audio | ⛔ Blocked (Hardware) | P1 | Speaker hardware | pyttsx3 path exists for dev |
 | Implement real Vosk STT decoder pipeline in audio_adapter.py | Phase 4 - Audio | ✅ Done (Implemented) | P1 | Microphone hardware | Added `VoskSpeechToTextAdapter` + `SoundDeviceAudioAdapter`, runtime STT mode wiring in `main.py`, config/env controls, and tests; verified WSL real mic capture and non-empty live transcript on 2026-03-28 (`feature/phase4-vosk-stt-pipeline`) |
-| Define STT confidence threshold and rejection fallback policy | Phase 4 - Audio | 🟡 To do | P1 | None | Document minimum confidence score to act on; below threshold → re-prompt |
+| Define STT confidence threshold and rejection fallback policy | Phase 4 - Audio | ✅ Done (Implemented) | P1 | None | Document minimum confidence score to act on; below threshold → re-prompt |
 | Design audio pre-processing pipeline (VAD, noise gate, AGC) | Phase 4 - Audio | 🟡 To do | P1 | None | Improve STT accuracy before decoder; required for reliable voice UX |
 | Finalize TTS voice selection for production (Piper vs Coqui; pyttsx3 is dev-only) | Phase 4 - Audio | 🟡 To do | P1 | None | Decide and document production TTS engine and voice model |
 | Plan and evaluate automatic speaker diarization | Phase 4 - Audio | 🟡 To do | P2 | None | Current speaker ID is manual; evaluate whether auto diarization is in scope |
