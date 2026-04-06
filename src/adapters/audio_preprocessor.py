@@ -64,7 +64,6 @@ def reset_preprocessor_stats() -> None:
 # ---------------------------------------------------------------------------
 _INT16_MAX = 32_767
 _INT16_MIN = -32_768
-_VALID_FRAME_MS = (10, 20, 30)
 
 
 # ---------------------------------------------------------------------------
@@ -287,17 +286,22 @@ class AudioPreprocessor:
             if trimmed is None:
                 _STATS["gate_rejections"] += 1
                 return None
+            # Only increment counter if actual trimming occurred
+            if trimmed.size < samples.size:
+                _STATS["vad_trims"] += 1
             samples = trimmed
-            _STATS["vad_trims"] += 1
 
         # Stage 3: AGC
         if self._cfg.AUDIO_AGC_ENABLED:
+            samples_before_agc = samples.copy()
             samples = _apply_agc(
                 samples,
                 target_dbfs=self._cfg.AUDIO_AGC_TARGET_DBFS,
                 max_gain_db=self._cfg.AUDIO_AGC_MAX_GAIN_DB,
             )
-            _STATS["agc_applied"] += 1
+            # Only increment counter if actual gain was applied
+            if not np.array_equal(samples, samples_before_agc):
+                _STATS["agc_applied"] += 1
 
         return samples.tobytes()
 

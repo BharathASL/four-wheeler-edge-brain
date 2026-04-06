@@ -77,6 +77,7 @@ class SpeechInputListener(InputListener):
             if self._preprocessor is not None:
                 audio_data = self._preprocessor.process(audio_data)
                 if not audio_data:  # None (gated) or b"" (empty after VAD)
+                    self._last_confidence = None
                     return None
             stt_result = self.stt_adapter.transcribe(audio_data)
             text = stt_result.text.strip() if stt_result and stt_result.text else ""
