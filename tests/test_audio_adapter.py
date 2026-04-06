@@ -11,6 +11,10 @@ class _FakeRecognizer:
         self.model = model
         self.sample_rate_hz = sample_rate_hz
 
+    def SetWords(self, enabled):
+        # Mock implementation; no-op for testing
+        pass
+
     def AcceptWaveform(self, audio_data):
         return False
 

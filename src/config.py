@@ -30,6 +30,16 @@ VOSK_MODEL_PATH                 str   ""                           path to Vosk 
 STT_SAMPLE_RATE_HZ              int   16000                        input sample rate for STT
 STT_MAX_RETRIES                 int   2                            retry attempts after first failure
 STT_RETRY_BACKOFF_S             float 0.3                          retry delay in seconds
+AUDIO_PREPROCESS_ENABLED        bool  False                        "1"|"true"|"yes" to enable preprocessing
+AUDIO_NOISE_GATE_ENABLED        bool  True                         "1"|"true"|"yes" to enable noise gate
+AUDIO_NOISE_GATE_THRESHOLD_DBFS float -45.0                        RMS gate threshold in dBFS (clamp -60 to -10)
+AUDIO_AGC_ENABLED               bool  True                         "1"|"true"|"yes" to enable AGC
+AUDIO_AGC_TARGET_DBFS           float -20.0                        AGC target RMS level in dBFS (clamp -40 to -3)
+AUDIO_AGC_MAX_GAIN_DB           float 24.0                         AGC max amplification cap in dB (clamp 0 to 40)
+AUDIO_VAD_ENABLED               bool  True                         "1"|"true"|"yes" to enable energy VAD
+AUDIO_VAD_ENERGY_THRESHOLD_DBFS float -45.0                        per-frame RMS threshold in dBFS (clamp -60 to -10)
+AUDIO_VAD_FRAME_MS              int   30                           VAD frame length ms; rounded to nearest {10, 20, 30}
+AUDIO_VAD_PADDING_MS            int   300                          silence padding around voice segments ms (clamp 0-2000)
 TELEMETRY_LOG_DIR               str   "data/logs"
 TELEMETRY_LOG_MAX_BYTES         int   1048576
 TELEMETRY_LOG_BACKUP_COUNT      int   3
@@ -73,6 +83,12 @@ def _env_bool(key: str, default: bool) -> bool:
 
 def _env_str(key: str, default: str) -> str:
     return os.getenv(key, default)
+
+
+def _clamp_vad_frame_ms(val: int) -> int:
+    """Round *val* to the nearest valid VAD frame length: 10, 20, or 30 ms."""
+    valid = (10, 20, 30)
+    return min(valid, key=lambda v: abs(v - val))
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +139,18 @@ class RobotConfig:
     # STT confidence threshold and fallback
     STT_CONFIDENCE_THRESHOLD: float = 0.7  # Minimum confidence to accept transcript
     STT_REPROMPT_ON_REJECT: bool = True    # If True, re-prompt user on low confidence
+
+    # ── Audio Preprocessing (VAD, Noise Gate, AGC) ────────────────────────────
+    AUDIO_PREPROCESS_ENABLED: bool = False
+    AUDIO_NOISE_GATE_ENABLED: bool = True
+    AUDIO_NOISE_GATE_THRESHOLD_DBFS: float = -45.0
+    AUDIO_AGC_ENABLED: bool = True
+    AUDIO_AGC_TARGET_DBFS: float = -20.0
+    AUDIO_AGC_MAX_GAIN_DB: float = 24.0
+    AUDIO_VAD_ENABLED: bool = True
+    AUDIO_VAD_ENERGY_THRESHOLD_DBFS: float = -45.0
+    AUDIO_VAD_FRAME_MS: int = 30
+    AUDIO_VAD_PADDING_MS: int = 300
 
     # ── Telemetry ─────────────────────────────────────────────────────────────
     LOG_DIR: str = "data/logs"
@@ -183,6 +211,36 @@ class RobotConfig:
                 max(0.0, _env_float("STT_CONFIDENCE_THRESHOLD", defaults.STT_CONFIDENCE_THRESHOLD)),
             ),
             STT_REPROMPT_ON_REJECT=_env_bool("STT_REPROMPT_ON_REJECT", defaults.STT_REPROMPT_ON_REJECT),
+            AUDIO_PREPROCESS_ENABLED=_env_bool(
+                "AUDIO_PREPROCESS_ENABLED", defaults.AUDIO_PREPROCESS_ENABLED
+            ),
+            AUDIO_NOISE_GATE_ENABLED=_env_bool(
+                "AUDIO_NOISE_GATE_ENABLED", defaults.AUDIO_NOISE_GATE_ENABLED
+            ),
+            AUDIO_NOISE_GATE_THRESHOLD_DBFS=max(
+                -60.0,
+                min(-10.0, _env_float("AUDIO_NOISE_GATE_THRESHOLD_DBFS", defaults.AUDIO_NOISE_GATE_THRESHOLD_DBFS)),
+            ),
+            AUDIO_AGC_ENABLED=_env_bool("AUDIO_AGC_ENABLED", defaults.AUDIO_AGC_ENABLED),
+            AUDIO_AGC_TARGET_DBFS=max(
+                -40.0,
+                min(-3.0, _env_float("AUDIO_AGC_TARGET_DBFS", defaults.AUDIO_AGC_TARGET_DBFS)),
+            ),
+            AUDIO_AGC_MAX_GAIN_DB=max(
+                0.0,
+                min(40.0, _env_float("AUDIO_AGC_MAX_GAIN_DB", defaults.AUDIO_AGC_MAX_GAIN_DB)),
+            ),
+            AUDIO_VAD_ENABLED=_env_bool("AUDIO_VAD_ENABLED", defaults.AUDIO_VAD_ENABLED),
+            AUDIO_VAD_ENERGY_THRESHOLD_DBFS=max(
+                -60.0,
+                min(-10.0, _env_float("AUDIO_VAD_ENERGY_THRESHOLD_DBFS", defaults.AUDIO_VAD_ENERGY_THRESHOLD_DBFS)),
+            ),
+            AUDIO_VAD_FRAME_MS=_clamp_vad_frame_ms(
+                _env_int("AUDIO_VAD_FRAME_MS", defaults.AUDIO_VAD_FRAME_MS)
+            ),
+            AUDIO_VAD_PADDING_MS=max(
+                0, min(2000, _env_int("AUDIO_VAD_PADDING_MS", defaults.AUDIO_VAD_PADDING_MS))
+            ),
         )
 
 

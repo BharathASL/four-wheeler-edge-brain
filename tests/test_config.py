@@ -43,6 +43,19 @@ class TestRobotConfigDefaults:
         assert cfg.STT_RETRY_BACKOFF_S == 0.3
         assert cfg.STT_CONFIDENCE_THRESHOLD == 0.7
         assert cfg.STT_REPROMPT_ON_REJECT is True
+
+    def test_audio_preprocessing_defaults(self):
+        cfg = RobotConfig()
+        assert cfg.AUDIO_PREPROCESS_ENABLED is False
+        assert cfg.AUDIO_NOISE_GATE_ENABLED is True
+        assert cfg.AUDIO_NOISE_GATE_THRESHOLD_DBFS == -45.0
+        assert cfg.AUDIO_AGC_ENABLED is True
+        assert cfg.AUDIO_AGC_TARGET_DBFS == -20.0
+        assert cfg.AUDIO_AGC_MAX_GAIN_DB == 24.0
+        assert cfg.AUDIO_VAD_ENABLED is True
+        assert cfg.AUDIO_VAD_ENERGY_THRESHOLD_DBFS == -45.0
+        assert cfg.AUDIO_VAD_FRAME_MS == 30
+        assert cfg.AUDIO_VAD_PADDING_MS == 300
     def test_env_stt_confidence_threshold(self, monkeypatch):
         monkeypatch.setenv("STT_CONFIDENCE_THRESHOLD", "0.42")
         assert RobotConfig.from_env().STT_CONFIDENCE_THRESHOLD == 0.42
@@ -50,6 +63,59 @@ class TestRobotConfigDefaults:
     def test_env_stt_reprompt_on_reject(self, monkeypatch):
         monkeypatch.setenv("STT_REPROMPT_ON_REJECT", "0")
         assert RobotConfig.from_env().STT_REPROMPT_ON_REJECT is False
+
+    def test_env_audio_preprocess_enabled(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_PREPROCESS_ENABLED", "1")
+        assert RobotConfig.from_env().AUDIO_PREPROCESS_ENABLED is True
+
+    def test_env_audio_noise_gate_enabled(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_NOISE_GATE_ENABLED", "0")
+        assert RobotConfig.from_env().AUDIO_NOISE_GATE_ENABLED is False
+
+    def test_env_audio_noise_gate_threshold(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_NOISE_GATE_THRESHOLD_DBFS", "-30.0")
+        assert RobotConfig.from_env().AUDIO_NOISE_GATE_THRESHOLD_DBFS == -30.0
+
+    def test_env_audio_noise_gate_threshold_clamped_high(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_NOISE_GATE_THRESHOLD_DBFS", "5.0")  # above -10 max
+        assert RobotConfig.from_env().AUDIO_NOISE_GATE_THRESHOLD_DBFS == -10.0
+
+    def test_env_audio_noise_gate_threshold_clamped_low(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_NOISE_GATE_THRESHOLD_DBFS", "-70.0")  # below -60 min
+        assert RobotConfig.from_env().AUDIO_NOISE_GATE_THRESHOLD_DBFS == -60.0
+
+    def test_env_audio_agc_enabled(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_AGC_ENABLED", "false")
+        assert RobotConfig.from_env().AUDIO_AGC_ENABLED is False
+
+    def test_env_audio_agc_target_dbfs_clamped(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_AGC_TARGET_DBFS", "0.0")  # above -3 max
+        assert RobotConfig.from_env().AUDIO_AGC_TARGET_DBFS == -3.0
+
+    def test_env_audio_agc_max_gain_clamped(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_AGC_MAX_GAIN_DB", "100.0")  # above 40 max
+        assert RobotConfig.from_env().AUDIO_AGC_MAX_GAIN_DB == 40.0
+
+    def test_env_audio_vad_enabled(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_ENABLED", "no")
+        assert RobotConfig.from_env().AUDIO_VAD_ENABLED is False
+
+    def test_env_audio_vad_frame_ms_valid(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_FRAME_MS", "20")
+        assert RobotConfig.from_env().AUDIO_VAD_FRAME_MS == 20
+
+    def test_env_audio_vad_frame_ms_rounds_to_nearest(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_FRAME_MS", "25")  # nearest to 20 or 30 → 30
+        result = RobotConfig.from_env().AUDIO_VAD_FRAME_MS
+        assert result in (20, 30)
+
+    def test_env_audio_vad_padding_ms_clamped(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_PADDING_MS", "5000")  # above 2000 max
+        assert RobotConfig.from_env().AUDIO_VAD_PADDING_MS == 2000
+
+    def test_env_audio_vad_padding_ms_clamped_low(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_PADDING_MS", "-50")  # below 0 min
+        assert RobotConfig.from_env().AUDIO_VAD_PADDING_MS == 0
 
     def test_telemetry_defaults(self):
         cfg = RobotConfig()
@@ -86,6 +152,11 @@ class TestRobotConfigFromEnv:
             "MEMORY_DB_PATH", "MEMORY_RETRIEVAL_MODE", "SEMANTIC_BACKEND",
             "MODEL_COOLDOWN_SECONDS", "MODEL_TIMEOUT_S",
             "STT_MODE", "VOSK_MODEL_PATH", "STT_SAMPLE_RATE_HZ", "STT_MAX_RETRIES", "STT_RETRY_BACKOFF_S",
+            "STT_CONFIDENCE_THRESHOLD", "STT_REPROMPT_ON_REJECT",
+            "AUDIO_PREPROCESS_ENABLED", "AUDIO_NOISE_GATE_ENABLED", "AUDIO_NOISE_GATE_THRESHOLD_DBFS",
+            "AUDIO_AGC_ENABLED", "AUDIO_AGC_TARGET_DBFS", "AUDIO_AGC_MAX_GAIN_DB",
+            "AUDIO_VAD_ENABLED", "AUDIO_VAD_ENERGY_THRESHOLD_DBFS", "AUDIO_VAD_FRAME_MS",
+            "AUDIO_VAD_PADDING_MS",
             "TELEMETRY_LOG_DIR", "TELEMETRY_LOG_MAX_BYTES",
             "TELEMETRY_LOG_BACKUP_COUNT", "TELEMETRY_DISABLE_FILE_LOGGING",
             "HTTP_API_ENABLED", "HTTP_API_HOST", "HTTP_API_PORT",

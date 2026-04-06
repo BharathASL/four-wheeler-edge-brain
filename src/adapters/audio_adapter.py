@@ -163,6 +163,7 @@ class VoskSpeechToTextAdapter(SpeechToTextAdapter):
             raise RuntimeError("vosk runtime missing KaldiRecognizer class")
 
         recognizer = recognizer_cls(self._model, self.sample_rate_hz)
+        recognizer.SetWords(True)
         accepted = recognizer.AcceptWaveform(audio_data)
         result_payload = recognizer.Result()
         final_payload = recognizer.FinalResult()
