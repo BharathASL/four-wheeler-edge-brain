@@ -84,6 +84,7 @@ def _build_input_listener(
     if mode == "vosk":
         try:
             from src.adapters.audio_adapter import SoundDeviceAudioAdapter, VoskSpeechToTextAdapter
+            from src.adapters.audio_preprocessor import AudioPreprocessor
 
             audio_adapter = SoundDeviceAudioAdapter(sample_rate_hz=cfg.STT_SAMPLE_RATE_HZ, channels=1)
             stt_adapter = VoskSpeechToTextAdapter(
@@ -92,12 +93,21 @@ def _build_input_listener(
                 max_retries=cfg.STT_MAX_RETRIES,
                 retry_backoff_s=cfg.STT_RETRY_BACKOFF_S,
             )
+            preprocessor = AudioPreprocessor(cfg) if cfg.AUDIO_PREPROCESS_ENABLED else None
+            logger.info(
+                "audio_preprocess enabled=%s noise_gate=%s vad=%s agc=%s",
+                cfg.AUDIO_PREPROCESS_ENABLED,
+                cfg.AUDIO_NOISE_GATE_ENABLED,
+                cfg.AUDIO_VAD_ENABLED,
+                cfg.AUDIO_AGC_ENABLED,
+            )
             listener = SpeechInputListener(
                 audio_adapter=audio_adapter,
                 stt_adapter=stt_adapter,
                 duration=cfg.AUDIO_RECORD_DURATION_S,
                 confidence_threshold=cfg.STT_CONFIDENCE_THRESHOLD,
                 reprompt_on_reject=cfg.STT_REPROMPT_ON_REJECT,
+                preprocessor=preprocessor,
             )
             return listener, "vosk"
         except Exception as exc:
@@ -272,6 +282,10 @@ def simulate_loop(
             result = outcome["result"]
             if outcome.get("error"):
                 print("Input Error:", outcome["error"])
+            if outcome.get("input"):
+                confidence = listener.get_last_confidence() if hasattr(listener, 'get_last_confidence') else None
+                conf_str = f" (confidence: {confidence:.2f})" if confidence is not None else ""
+                print(f"🎤 You said: '{outcome['input']}'{conf_str}")
             print("Action:", action)
             print("Result:", result)
             logger.info("action=%s result=%s", action, result)

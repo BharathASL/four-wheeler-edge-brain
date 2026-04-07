@@ -8,6 +8,9 @@ def test_build_input_listener_console_mode():
         def warning(self, *args, **kwargs):
             return None
 
+        def info(self, *args, **kwargs):
+            return None
+
     listener, mode = _build_input_listener(
         stt_mode="console",
         vosk_model_path="",
@@ -28,6 +31,9 @@ def test_build_input_listener_unknown_mode_falls_back_to_console():
 
         def warning(self, *args, **kwargs):
             self.messages.append(args)
+
+        def info(self, *args, **kwargs):
+            return None
 
     logger = _Logger()
     listener, mode = _build_input_listener(
@@ -51,6 +57,9 @@ def test_build_input_listener_vosk_failure_falls_back_to_console():
 
         def warning(self, *args, **kwargs):
             self.messages.append(args)
+
+        def info(self, *args, **kwargs):
+            return None
 
     logger = _Logger()
     listener, mode = _build_input_listener(
