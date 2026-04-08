@@ -8,3 +8,4 @@ vosk
 sounddevice
 pyttsx3
 numpy
+webrtcvad-wheels>=2.0.14

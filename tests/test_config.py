@@ -276,7 +276,7 @@ class TestRobotConfigTypeCoercion:
 
 
 class TestConfigIntegration:
-    def test_safety_constants_match_safety_controller(self):
+    def test_safety_constants_match_config(self):
         """Safety constants exported by safety_controller must come from config."""
         from src.core.safety_controller import (
             MAX_LINEAR_SPEED_MPS,
@@ -304,3 +304,90 @@ class TestConfigIntegration:
         import src.config as config_mod
         importlib.reload(config_mod)
         assert hasattr(config_mod, "RobotConfig")
+
+
+class TestStreamingVADConfigDefaults:
+    def test_streaming_vad_defaults(self):
+        cfg = RobotConfig()
+        assert cfg.AUDIO_VAD_STREAM_ENABLED is False
+        assert cfg.AUDIO_VAD_AGGRESSIVENESS == 2
+        assert cfg.AUDIO_VAD_CHUNK_MS == 20
+        assert cfg.AUDIO_VAD_SILENCE_PADDING_MS == 400
+        assert cfg.AUDIO_VAD_MAX_DURATION_S == 8.0
+        assert cfg.AUDIO_VAD_MIN_SPEECH_MS == 100
+
+    def test_env_vad_stream_enabled(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_STREAM_ENABLED", "1")
+        assert RobotConfig.from_env().AUDIO_VAD_STREAM_ENABLED is True
+
+    def test_env_vad_aggressiveness(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_AGGRESSIVENESS", "3")
+        assert RobotConfig.from_env().AUDIO_VAD_AGGRESSIVENESS == 3
+
+    def test_env_vad_aggressiveness_clamped_high(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_AGGRESSIVENESS", "10")
+        assert RobotConfig.from_env().AUDIO_VAD_AGGRESSIVENESS == 3
+
+    def test_env_vad_aggressiveness_clamped_low(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_AGGRESSIVENESS", "-1")
+        assert RobotConfig.from_env().AUDIO_VAD_AGGRESSIVENESS == 0
+
+    def test_env_vad_chunk_ms_valid(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_CHUNK_MS", "10")
+        assert RobotConfig.from_env().AUDIO_VAD_CHUNK_MS == 10
+
+    def test_env_vad_chunk_ms_rounded_to_nearest(self, monkeypatch):
+        # _clamp_vad_frame_ms rounds invalid values; ties pick the first nearest valid value, so 25 → 20.
+        monkeypatch.setenv("AUDIO_VAD_CHUNK_MS", "25")
+        assert RobotConfig.from_env().AUDIO_VAD_CHUNK_MS == 20
+
+    def test_env_vad_silence_padding_ms(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_SILENCE_PADDING_MS", "600")
+        assert RobotConfig.from_env().AUDIO_VAD_SILENCE_PADDING_MS == 600
+
+    def test_env_vad_silence_padding_ms_clamped_high(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_SILENCE_PADDING_MS", "99999")
+        assert RobotConfig.from_env().AUDIO_VAD_SILENCE_PADDING_MS == 5000
+
+    def test_env_vad_silence_padding_ms_clamped_low(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_SILENCE_PADDING_MS", "-100")
+        assert RobotConfig.from_env().AUDIO_VAD_SILENCE_PADDING_MS == 0
+
+    def test_env_vad_max_duration_s(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_MAX_DURATION_S", "15.0")
+        assert RobotConfig.from_env().AUDIO_VAD_MAX_DURATION_S == 15.0
+
+    def test_env_vad_max_duration_s_clamped_high(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_MAX_DURATION_S", "999")
+        assert RobotConfig.from_env().AUDIO_VAD_MAX_DURATION_S == 60.0
+
+    def test_env_vad_max_duration_s_clamped_low(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_MAX_DURATION_S", "0.1")
+        assert RobotConfig.from_env().AUDIO_VAD_MAX_DURATION_S == 1.0
+
+    def test_env_vad_min_speech_ms(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_MIN_SPEECH_MS", "200")
+        assert RobotConfig.from_env().AUDIO_VAD_MIN_SPEECH_MS == 200
+
+    def test_env_vad_min_speech_ms_clamped_high(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_MIN_SPEECH_MS", "9999")
+        assert RobotConfig.from_env().AUDIO_VAD_MIN_SPEECH_MS == 2000
+
+    def test_env_vad_min_speech_ms_clamped_low(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_MIN_SPEECH_MS", "-50")
+        assert RobotConfig.from_env().AUDIO_VAD_MIN_SPEECH_MS == 0
+
+    def test_vad_speech_gate_dbfs_default(self):
+        assert RobotConfig().AUDIO_VAD_SPEECH_GATE_DBFS == -38.0
+
+    def test_env_vad_speech_gate_dbfs_override(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_SPEECH_GATE_DBFS", "-30.0")
+        assert RobotConfig.from_env().AUDIO_VAD_SPEECH_GATE_DBFS == -30.0
+
+    def test_env_vad_speech_gate_dbfs_clamped_high(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_SPEECH_GATE_DBFS", "5.0")
+        assert RobotConfig.from_env().AUDIO_VAD_SPEECH_GATE_DBFS == 0.0
+
+    def test_env_vad_speech_gate_dbfs_clamped_low(self, monkeypatch):
+        monkeypatch.setenv("AUDIO_VAD_SPEECH_GATE_DBFS", "-200.0")
+        assert RobotConfig.from_env().AUDIO_VAD_SPEECH_GATE_DBFS == -96.0

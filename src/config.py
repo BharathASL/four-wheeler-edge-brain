@@ -40,6 +40,13 @@ AUDIO_VAD_ENABLED               bool  True                         "1"|"true"|"y
 AUDIO_VAD_ENERGY_THRESHOLD_DBFS float -45.0                        per-frame RMS threshold in dBFS (clamp -60 to -10)
 AUDIO_VAD_FRAME_MS              int   30                           VAD frame length ms; rounded to nearest {10, 20, 30}
 AUDIO_VAD_PADDING_MS            int   300                          silence padding around voice segments ms (clamp 0-2000)
+AUDIO_VAD_STREAM_ENABLED        bool  False                        "1"|"true"|"yes" to enable streaming VAD capture
+AUDIO_VAD_AGGRESSIVENESS        int   2                            webrtcvad aggressiveness level (clamp 0-3)
+AUDIO_VAD_CHUNK_MS              int   20                           streaming VAD frame length ms; rounded to nearest {10, 20, 30}
+AUDIO_VAD_SILENCE_PADDING_MS    int   400                          trailing silence before returning utterance ms (clamp 0-5000)
+AUDIO_VAD_MAX_DURATION_S        float 8.0                          max utterance duration in seconds (clamp 1.0-60.0)
+AUDIO_VAD_MIN_SPEECH_MS         int   100                          minimum buffered speech duration ms (clamp 0-2000)
+AUDIO_VAD_SPEECH_GATE_DBFS      float -38.0                        min dBFS to start SILENCE→SPEECH transition (clamp -96 to 0)
 TELEMETRY_LOG_DIR               str   "data/logs"
 TELEMETRY_LOG_MAX_BYTES         int   1048576
 TELEMETRY_LOG_BACKUP_COUNT      int   3
@@ -152,6 +159,15 @@ class RobotConfig:
     AUDIO_VAD_FRAME_MS: int = 30
     AUDIO_VAD_PADDING_MS: int = 300
 
+    # ── Streaming VAD Capture (Phase 4.1) ─────────────────────────────────────
+    AUDIO_VAD_STREAM_ENABLED: bool = False   # replace fixed recorder with streaming VAD
+    AUDIO_VAD_AGGRESSIVENESS: int = 2        # webrtcvad aggressiveness 0-3
+    AUDIO_VAD_CHUNK_MS: int = 20             # streaming frame size (10 / 20 / 30 ms)
+    AUDIO_VAD_SILENCE_PADDING_MS: int = 400  # ms of silence to wait before returning
+    AUDIO_VAD_MAX_DURATION_S: float = 8.0   # hard ceiling per utterance
+    AUDIO_VAD_MIN_SPEECH_MS: int = 100       # discard fragments shorter than this
+    AUDIO_VAD_SPEECH_GATE_DBFS: float = -38.0  # min dBFS to trigger SILENCE→SPEECH transition
+
     # ── Telemetry ─────────────────────────────────────────────────────────────
     LOG_DIR: str = "data/logs"
     LOG_MAX_BYTES: int = 1_048_576
@@ -240,6 +256,27 @@ class RobotConfig:
             ),
             AUDIO_VAD_PADDING_MS=max(
                 0, min(2000, _env_int("AUDIO_VAD_PADDING_MS", defaults.AUDIO_VAD_PADDING_MS))
+            ),
+            AUDIO_VAD_STREAM_ENABLED=_env_bool(
+                "AUDIO_VAD_STREAM_ENABLED", defaults.AUDIO_VAD_STREAM_ENABLED
+            ),
+            AUDIO_VAD_AGGRESSIVENESS=max(
+                0, min(3, _env_int("AUDIO_VAD_AGGRESSIVENESS", defaults.AUDIO_VAD_AGGRESSIVENESS))
+            ),
+            AUDIO_VAD_CHUNK_MS=_clamp_vad_frame_ms(
+                _env_int("AUDIO_VAD_CHUNK_MS", defaults.AUDIO_VAD_CHUNK_MS)
+            ),
+            AUDIO_VAD_SILENCE_PADDING_MS=max(
+                0, min(5000, _env_int("AUDIO_VAD_SILENCE_PADDING_MS", defaults.AUDIO_VAD_SILENCE_PADDING_MS))
+            ),
+            AUDIO_VAD_MAX_DURATION_S=max(
+                1.0, min(60.0, _env_float("AUDIO_VAD_MAX_DURATION_S", defaults.AUDIO_VAD_MAX_DURATION_S))
+            ),
+            AUDIO_VAD_MIN_SPEECH_MS=max(
+                0, min(2000, _env_int("AUDIO_VAD_MIN_SPEECH_MS", defaults.AUDIO_VAD_MIN_SPEECH_MS))
+            ),
+            AUDIO_VAD_SPEECH_GATE_DBFS=float(
+                max(-96.0, min(0.0, _env_float("AUDIO_VAD_SPEECH_GATE_DBFS", defaults.AUDIO_VAD_SPEECH_GATE_DBFS)))
             ),
         )
 
