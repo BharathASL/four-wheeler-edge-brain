@@ -263,6 +263,23 @@ class TestStreamingVADAdapterValidation:
         a = _make_streaming_adapter([], [], aggressiveness=-5)
         assert a.aggressiveness == 0
 
+    def test_zero_signal_rms_dbfs_uses_documented_floor(self):
+        assert audio_module._rms_dbfs_frame(_SILENCE_FRAME) == -96.0
+
+    def test_derived_frame_counts_use_clamped_values(self):
+        a = _make_streaming_adapter(
+            [],
+            [],
+            sample_rate_hz=_SR,
+            chunk_ms=_CHUNK_MS,
+            silence_padding_ms=-100,
+            max_duration_s=0.04,
+            min_speech_ms=-50,
+        )
+        assert a._padding_frames == 1
+        assert a._max_frames == 25
+        assert a._min_speech_frames == 1
+
 
 class TestStreamingVADStateMachine:
     def test_all_silence_returns_empty_bytes(self):
@@ -297,14 +314,14 @@ class TestStreamingVADStateMachine:
         assert result == b""
 
     def test_max_duration_ceiling_stops_recording(self):
-        # max_frames = int(40ms / 20ms) = 2; feed 10 speech frames
-        frames = [_SPEECH_FRAME] * 10
-        vad_results = [True] * 10
+        # max_duration_s=0.5 is the effective minimum, so max_frames = 25.
+        # Feed 50 speech frames and verify recording stops at the 25-frame ceiling.
+        frames = [_SPEECH_FRAME] * 50
+        vad_results = [True] * 50
         result = _make_streaming_adapter(
             vad_results, frames, max_duration_s=0.04, min_speech_ms=0
         ).record(0)
-        # Exactly 2 frames collected (loop exits at total_frames == max_frames)
-        assert len(result) == 2 * _FRAME_SAMPLES * 2
+        assert len(result) == 25 * _FRAME_SAMPLES * 2
 
     def test_vad_exception_treated_as_silence(self):
         class _ErrorVad:

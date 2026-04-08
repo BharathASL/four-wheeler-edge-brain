@@ -337,9 +337,9 @@ class TestStreamingVADConfigDefaults:
         assert RobotConfig.from_env().AUDIO_VAD_CHUNK_MS == 10
 
     def test_env_vad_chunk_ms_rounded_to_nearest(self, monkeypatch):
-        # _clamp_vad_frame_ms rounds invalid values; 25 → 30 (nearest valid)
+        # _clamp_vad_frame_ms rounds invalid values; ties pick the first nearest valid value, so 25 → 20.
         monkeypatch.setenv("AUDIO_VAD_CHUNK_MS", "25")
-        assert RobotConfig.from_env().AUDIO_VAD_CHUNK_MS in (10, 20, 30)
+        assert RobotConfig.from_env().AUDIO_VAD_CHUNK_MS == 20
 
     def test_env_vad_silence_padding_ms(self, monkeypatch):
         monkeypatch.setenv("AUDIO_VAD_SILENCE_PADDING_MS", "600")

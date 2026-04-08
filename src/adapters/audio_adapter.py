@@ -109,7 +109,9 @@ def _rms_dbfs_frame(frame_bytes: bytes) -> float:
         return -96.0
     samples = struct.unpack(f"{n}h", frame_bytes)
     rms = math.sqrt(sum(s * s for s in samples) / n)
-    return 20.0 * math.log10(max(rms, 1.0) / 32768.0)
+    if rms == 0:
+        return -96.0
+    return 20.0 * math.log10(rms / 32768.0)
 
 
 class _VadState:
@@ -210,13 +212,13 @@ class StreamingVADAudioAdapter(AudioAdapter):
         self.min_speech_ms = max(0, int(min_speech_ms))
         self.speech_energy_gate_dbfs = float(speech_energy_gate_dbfs)
 
-        self._frame_samples = (sample_rate_hz * chunk_ms) // 1000
+        self._frame_samples = (self.sample_rate_hz * self.chunk_ms) // 1000
         self._padding_frames = max(
-            1, (silence_padding_ms + chunk_ms - 1) // chunk_ms
+            1, (self.silence_padding_ms + self.chunk_ms - 1) // self.chunk_ms
         )
-        self._max_frames = int(max_duration_s * 1000 / chunk_ms)
+        self._max_frames = int(self.max_duration_s * 1000 / self.chunk_ms)
         self._min_speech_frames = max(
-            1, (min_speech_ms + chunk_ms - 1) // chunk_ms
+            1, (self.min_speech_ms + self.chunk_ms - 1) // self.chunk_ms
         )
 
         self._vad_runtime = _webrtcvad_runtime or _load_webrtcvad_runtime()
@@ -254,17 +256,19 @@ class StreamingVADAudioAdapter(AudioAdapter):
                     logger.warning("webrtcvad_frame_error frame_idx=%d", total_frames)
 
                 if state == _VadState.SILENCE:
-                    if is_speech and _rms_dbfs_frame(frame_bytes) >= self.speech_energy_gate_dbfs:
-                        state = _VadState.SPEECH
-                        speech_frames.append(frame_bytes)
-                        logger.debug("vad_stream_voice_start frame=%d", total_frames)
-                    elif is_speech:
-                        logger.debug(
-                            "vad_stream_noise_gate filtered dbfs=%.1f gate=%.1f frame=%d",
-                            _rms_dbfs_frame(frame_bytes),
-                            self.speech_energy_gate_dbfs,
-                            total_frames,
-                        )
+                    if is_speech:
+                        frame_dbfs = _rms_dbfs_frame(frame_bytes)
+                        if frame_dbfs >= self.speech_energy_gate_dbfs:
+                            state = _VadState.SPEECH
+                            speech_frames.append(frame_bytes)
+                            logger.debug("vad_stream_voice_start frame=%d", total_frames)
+                        else:
+                            logger.debug(
+                                "vad_stream_noise_gate filtered dbfs=%.1f gate=%.1f frame=%d",
+                                frame_dbfs,
+                                self.speech_energy_gate_dbfs,
+                                total_frames,
+                            )
 
                 elif state == _VadState.SPEECH:
                     speech_frames.append(frame_bytes)
