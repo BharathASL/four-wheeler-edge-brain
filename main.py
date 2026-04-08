@@ -23,6 +23,15 @@ def run_tests():
     sys.exit(pytest.main(["-q"]))
 
 
+def _print_exit_loading() -> None:
+    print()
+    print("exiting", end="", flush=True)
+    for _ in range(3):
+        time.sleep(0.25)
+        print(".", end="", flush=True)
+    print()
+
+
 def _build_tts(enabled: bool):
     if not enabled:
         return None
@@ -83,10 +92,30 @@ def _build_input_listener(
 
     if mode == "vosk":
         try:
-            from src.adapters.audio_adapter import SoundDeviceAudioAdapter, VoskSpeechToTextAdapter
+            from src.adapters.audio_adapter import SoundDeviceAudioAdapter, StreamingVADAudioAdapter, VoskSpeechToTextAdapter
             from src.adapters.audio_preprocessor import AudioPreprocessor
 
-            audio_adapter = SoundDeviceAudioAdapter(sample_rate_hz=cfg.STT_SAMPLE_RATE_HZ, channels=1)
+            if cfg.AUDIO_VAD_STREAM_ENABLED:
+                audio_adapter = StreamingVADAudioAdapter(
+                    sample_rate_hz=cfg.STT_SAMPLE_RATE_HZ,
+                    aggressiveness=cfg.AUDIO_VAD_AGGRESSIVENESS,
+                    chunk_ms=cfg.AUDIO_VAD_CHUNK_MS,
+                    silence_padding_ms=cfg.AUDIO_VAD_SILENCE_PADDING_MS,
+                    max_duration_s=cfg.AUDIO_VAD_MAX_DURATION_S,
+                    min_speech_ms=cfg.AUDIO_VAD_MIN_SPEECH_MS,
+                    speech_energy_gate_dbfs=cfg.AUDIO_VAD_SPEECH_GATE_DBFS,
+                )
+                logger.info(
+                    "audio_vad_stream enabled=True aggressiveness=%d chunk_ms=%d padding_ms=%d max_s=%s min_speech_ms=%d speech_gate_dbfs=%s",
+                    cfg.AUDIO_VAD_AGGRESSIVENESS,
+                    cfg.AUDIO_VAD_CHUNK_MS,
+                    cfg.AUDIO_VAD_SILENCE_PADDING_MS,
+                    cfg.AUDIO_VAD_MAX_DURATION_S,
+                    cfg.AUDIO_VAD_MIN_SPEECH_MS,
+                    cfg.AUDIO_VAD_SPEECH_GATE_DBFS,
+                )
+            else:
+                audio_adapter = SoundDeviceAudioAdapter(sample_rate_hz=cfg.STT_SAMPLE_RATE_HZ, channels=1)
             stt_adapter = VoskSpeechToTextAdapter(
                 model_path=vosk_model_path,
                 sample_rate_hz=cfg.STT_SAMPLE_RATE_HZ,
@@ -296,7 +325,7 @@ def simulate_loop(
                 else:
                     tts.speak(str(action.get("action", "NO_OP")))
     except KeyboardInterrupt:
-        print("exiting")
+        _print_exit_loading()
     finally:
         if api_server is not None:
             api_server.stop()
@@ -416,7 +445,7 @@ def chat_loop(
                 logger.exception("chat_generation_failed")
                 print(f"assistant> [error] {exc}")
     except KeyboardInterrupt:
-        print("exiting")
+        _print_exit_loading()
     finally:
         if retrieval_bench is not None:
             summary = retrieval_bench.summary()
