@@ -174,7 +174,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Build and validate llama.cpp on ARM (complete TINYLLAMA_SETUP.md build steps) | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Raspberry Pi hardware | TINYLLAMA_SETUP.md has placeholder; fill in concrete ARM build commands |
 | Implement src/motor_adapter.py stub (real + mock, following adapter pattern) | Phase 1.2 - Pi Hardware Bring-up | 🟡 To do | P0 | Motor HAT selection | Extend established adapter pattern; enables unit testing before hardware |
 | Wire up motors and verify GPIO/PWM signals with basic spin test | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Motor hardware + motor_adapter.py | First physical movement validation |
-| Define Phase 1.2 exit criteria (inference running, motors responding to commands) | Phase 1.2 - Pi Hardware Bring-up | � Done (Documented) | P0 | None | Objective gates A–F (+ conditional motor gate) defined in `docs/phase1_2/HARDWARE_BRINGUP.md`; mapped to runbook tests and PASS/PARTIAL/FAIL outcome states in `docs/phase1/PI_VALIDATION_RUNBOOK.md`; gate summary block added to `scripts/phase1_validate_pi.sh` (`feature/phase1-2-exit-criteria`) |
+| Define Phase 1.2 exit criteria (inference running, motors responding to commands) | Phase 1.2 - Pi Hardware Bring-up | 📝 Done (Documented) | P0 | None | Objective gates A–F (+ conditional motor gate) defined in `docs/phase1_2/HARDWARE_BRINGUP.md`; mapped to runbook tests and PASS/PARTIAL/FAIL outcome states in `docs/phase1/PI_VALIDATION_RUNBOOK.md`; gate summary block added to `scripts/phase1_validate_pi.sh` (`feature/phase1-2-exit-criteria`) |
 
 ## Phase 2.1 — Sensor Integration
 
@@ -211,14 +211,11 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ## Top Next Actions
 
-1. ✅ Implement real Vosk STT decoder pipeline in `audio_adapter.py` (P1 — Phase 4 Audio) using the validated WSL dev input path.
-2. 🟡 Define STT confidence threshold and rejection/re-prompt fallback policy (P1 — Phase 4 Audio).
-3. 🟡 Design audio pre-processing pipeline (VAD, noise gate, AGC) for the input path (P1 — Phase 4 Audio).
-4. 🟡 Finalize production TTS voice selection (Piper vs Coqui; pyttsx3 remains dev path) (P1 — Phase 4 Audio).
-5. ⛔ Integrate offline STT (Vosk) with microphone hardware on Raspberry Pi when hardware path is ready (P1 — Phase 4 Audio).
-6. ⛔ Integrate offline TTS (Piper/Coqui) with speaker hardware on Raspberry Pi when hardware path is ready (P1 — Phase 4 Audio).
-7. 🟡 Build conversation state machine (listening -> processing -> responding -> idle) to support voice UX (P1 — Phase 4.5).
-8. ⛔ Run end-to-end voice validation (wake word -> STT -> decision engine -> TTS) after audio hardware integration is complete (P0 — Phase 4.5).
+1. 🟡 Complete Phase 4.1 comparison: post-processing only vs streaming VAD only vs both together (P2 — Phase 4.1 Audio).
+2. 🟡 Finalize production TTS voice selection (Piper vs Coqui; pyttsx3 remains dev path) (P1 — Phase 4 Audio).
+3. 🟡 Build conversation state machine (listening -> processing -> responding -> idle) to support voice UX (P1 — Phase 4.5).
+4. 🟡 Implement API hardening tasks for remote management (auth + health-check + security model) (P0/P1 — Phase 8).
+5. ⛔ Run end-to-end voice validation (wake word -> STT -> decision engine -> TTS) after audio hardware integration is complete (P0 — Phase 4.5).
 
 ## Infrastructure & Housekeeping
 
@@ -230,4 +227,4 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ---
 
-Last updated: 2026-03-28 (Completed Phase 4 Vosk STT pipeline in WSL: decoder + real audio capture adapters, runtime wiring, config/CLI controls, automated tests, and live mic verification)
+Last updated: 2026-04-09 (Phase 4.1 streaming VAD implementation merged; remaining audio item is A/B comparison and tracker priorities refreshed)
