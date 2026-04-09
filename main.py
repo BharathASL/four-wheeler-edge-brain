@@ -41,6 +41,19 @@ def _build_tts(enabled: bool):
     return Pyttsx3TTSAdapter()
 
 
+def _build_motor_adapter(cfg: RobotConfig, logger):
+    mode = (cfg.MOTOR_ADAPTER_MODE or "none").strip().lower()
+    if mode == "none":
+        return None, "none"
+    if mode == "mock":
+        from src.adapters.motor_adapter import MockMotorAdapter
+
+        return MockMotorAdapter(), "mock"
+
+    logger.warning("Unknown MOTOR_ADAPTER_MODE=%s; disabling motor adapter", cfg.MOTOR_ADAPTER_MODE)
+    return None, "none"
+
+
 def _build_llama_adapter(model_mode: str, model_path: str, lib_path: str, strict_model: bool, logger):
     from src.adapters.llama_adapter import LlamaAdapter, MockLlamaAdapter
 
@@ -237,7 +250,11 @@ def simulate_loop(
         llama_adapter=llama,
         model_rate_limiter=ModelRateLimiter(model_cooldown_seconds),
     )
-    execer = ActionExecutor(state_manager=state)
+    motor_adapter, motor_mode = _build_motor_adapter(cfg, logger)
+    execer = ActionExecutor(
+        hardware_adapters={"motor": motor_adapter} if motor_adapter is not None else None,
+        state_manager=state,
+    )
     tts = None
     api_server = None
     auto_actions = Queue()
@@ -262,6 +279,7 @@ def simulate_loop(
     print("Starting Phase-1 PoC simulation (Ctrl-C to stop)")
     print(f"Model mode: requested={model_mode} active={effective_mode}")
     print(f"Input mode: requested={stt_mode} active={effective_stt_mode}")
+    print(f"Motor adapter mode: {motor_mode}")
     if enable_tts and tts is None:
         print("TTS requested but unavailable; running without speech")
 

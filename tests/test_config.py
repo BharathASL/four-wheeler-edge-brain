@@ -18,6 +18,13 @@ class TestRobotConfigDefaults:
         assert cfg.DEFAULT_BACK_SPEED_MPS == -0.2
         assert cfg.DEFAULT_TURN_LEFT_DPS == 60.0
         assert cfg.DEFAULT_TURN_RIGHT_DPS == -60.0
+        assert cfg.MOTOR_ADAPTER_MODE == "none"
+        assert cfg.MOTOR_PWM_FREQ_HZ == 1000
+        assert cfg.MOTOR_MAX_DUTY_CYCLE == 1.0
+        assert cfg.MOTOR_DEADBAND_PCT == 0.05
+        assert cfg.MOTOR_SPEED_TO_DUTY_LINEAR == 1.0
+        assert cfg.MOTOR_SPEED_TO_DUTY_ANGULAR == 1.0
+        assert cfg.MOTOR_RAMP_TIME_S == 0.1
 
     def test_timing_defaults(self):
         cfg = RobotConfig()
@@ -151,6 +158,8 @@ class TestRobotConfigFromEnv:
             "MODEL_MODE", "MODEL_PATH", "LLAMA_LIB_PATH",
             "MEMORY_DB_PATH", "MEMORY_RETRIEVAL_MODE", "SEMANTIC_BACKEND",
             "MODEL_COOLDOWN_SECONDS", "MODEL_TIMEOUT_S",
+            "MOTOR_ADAPTER_MODE", "MOTOR_PWM_FREQ_HZ", "MOTOR_MAX_DUTY_CYCLE", "MOTOR_DEADBAND_PCT",
+            "MOTOR_SPEED_TO_DUTY_LINEAR", "MOTOR_SPEED_TO_DUTY_ANGULAR", "MOTOR_RAMP_TIME_S",
             "STT_MODE", "VOSK_MODEL_PATH", "STT_SAMPLE_RATE_HZ", "STT_MAX_RETRIES", "STT_RETRY_BACKOFF_S",
             "STT_CONFIDENCE_THRESHOLD", "STT_REPROMPT_ON_REJECT",
             "AUDIO_PREPROCESS_ENABLED", "AUDIO_NOISE_GATE_ENABLED", "AUDIO_NOISE_GATE_THRESHOLD_DBFS",
@@ -199,6 +208,38 @@ class TestRobotConfigFromEnv:
     def test_env_model_cooldown(self, monkeypatch):
         monkeypatch.setenv("MODEL_COOLDOWN_SECONDS", "5.0")
         assert RobotConfig.from_env().MODEL_COOLDOWN_S == 5.0
+
+    def test_env_motor_adapter_mode(self, monkeypatch):
+        monkeypatch.setenv("MOTOR_ADAPTER_MODE", "mock")
+        assert RobotConfig.from_env().MOTOR_ADAPTER_MODE == "mock"
+
+    def test_env_motor_pwm_freq_clamped_low(self, monkeypatch):
+        monkeypatch.setenv("MOTOR_PWM_FREQ_HZ", "0")
+        assert RobotConfig.from_env().MOTOR_PWM_FREQ_HZ == 1
+
+    def test_env_motor_pwm_freq_clamped_high(self, monkeypatch):
+        monkeypatch.setenv("MOTOR_PWM_FREQ_HZ", "999999")
+        assert RobotConfig.from_env().MOTOR_PWM_FREQ_HZ == 50_000
+
+    def test_env_motor_max_duty_cycle_clamped(self, monkeypatch):
+        monkeypatch.setenv("MOTOR_MAX_DUTY_CYCLE", "3.0")
+        assert RobotConfig.from_env().MOTOR_MAX_DUTY_CYCLE == 1.0
+
+    def test_env_motor_deadband_clamped(self, monkeypatch):
+        monkeypatch.setenv("MOTOR_DEADBAND_PCT", "-0.4")
+        assert RobotConfig.from_env().MOTOR_DEADBAND_PCT == 0.0
+
+    def test_env_motor_speed_to_duty_linear_clamped(self, monkeypatch):
+        monkeypatch.setenv("MOTOR_SPEED_TO_DUTY_LINEAR", "0")
+        assert RobotConfig.from_env().MOTOR_SPEED_TO_DUTY_LINEAR == 0.01
+
+    def test_env_motor_speed_to_duty_angular_clamped(self, monkeypatch):
+        monkeypatch.setenv("MOTOR_SPEED_TO_DUTY_ANGULAR", "999")
+        assert RobotConfig.from_env().MOTOR_SPEED_TO_DUTY_ANGULAR == 10.0
+
+    def test_env_motor_ramp_time_clamped(self, monkeypatch):
+        monkeypatch.setenv("MOTOR_RAMP_TIME_S", "-2")
+        assert RobotConfig.from_env().MOTOR_RAMP_TIME_S == 0.0
 
     def test_env_memory_db_path(self, monkeypatch):
         monkeypatch.setenv("MEMORY_DB_PATH", "/tmp/test.sqlite")
