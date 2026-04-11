@@ -301,6 +301,11 @@ class TestRobotConfigFromEnv:
         monkeypatch.setenv("OPERATING_MODE", mode)
         assert RobotConfig.from_env().OPERATING_MODE == mode.upper()
 
+    @pytest.mark.parametrize("mode", [" AUTONOMOUS", "ASSISTED ", " MANUAL "])
+    def test_operating_mode_whitespace_stripped(self, monkeypatch, mode):
+        monkeypatch.setenv("OPERATING_MODE", mode)
+        assert RobotConfig.from_env().OPERATING_MODE == mode.strip()
+
     def test_operating_mode_invalid_fallback(self, monkeypatch):
         monkeypatch.setenv("OPERATING_MODE", "INVALID_MODE")
         assert RobotConfig.from_env().OPERATING_MODE == "SAFE_STOP"

@@ -6,10 +6,18 @@ def test_action_executor_safe_stop_blocks_all_but_safe_actions():
     state.update(operating_mode="SAFE_STOP")
     executor = ActionExecutor(state_manager=state)
 
-    # Safe actions should pass the block (they may return their own ok/error)
+    # Only STOP and ESTOP are allowed in SAFE_STOP mode
     assert executor.execute({"action": "STOP"}).get("status") == "ok"
-    assert executor.execute({"action": "IDLE"}).get("status") == "ok"
     assert executor.execute({"action": "ESTOP"}).get("status") == "ok"
+
+    # IDLE and RESET_ESTOP are blocked in SAFE_STOP mode
+    result = executor.execute({"action": "IDLE"})
+    assert result["status"] == "blocked"
+    assert result["info"] == "safe-stop-mode-active"
+
+    result = executor.execute({"action": "RESET_ESTOP"})
+    assert result["status"] == "blocked"
+    assert result["info"] == "safe-stop-mode-active"
 
     # Other actions should be blocked
     result = executor.execute({"action": "MOVE", "params": {}})
