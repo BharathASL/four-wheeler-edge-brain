@@ -9,6 +9,7 @@ def test_smoke_flow():
 
     # initialize components
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     llama = MockLlamaAdapter()
     llama.load_model("mock")
     audio = MockAudioAdapter()
@@ -27,6 +28,8 @@ def test_smoke_flow():
     action = de.decide("please dock", state.snapshot())
     assert isinstance(action, dict)
 
-    executor = ActionExecutor()
+    state_override = StateManager()
+    state_override.update(operating_mode="AUTONOMOUS")
+    executor = ActionExecutor(state_manager=state_override)
     result = executor.execute(action)
     assert result.get("status") == "ok"

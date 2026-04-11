@@ -59,7 +59,15 @@ class ActionExecutor:
         """
         name = action.get("action")
         params = action.get("params", {})
+        meta = action.get("meta", {})
         snap = self._state_snapshot()
+        mode = snap.get("operating_mode", "SAFE_STOP")
+
+        if mode == "SAFE_STOP" and name not in ("STOP", "ESTOP"):
+            return {"status": "blocked", "info": "safe-stop-mode-active"}
+
+        if mode == "MANUAL" and not meta.get("manual_safe") and name not in ("STOP", "ESTOP"):
+            return {"status": "blocked", "info": "manual-mode-restricted"}
 
         if name == "STOP":
             stop_error = self._stop_motor_safely(error_info="motor-stop-failed")

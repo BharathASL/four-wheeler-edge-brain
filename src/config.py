@@ -105,6 +105,22 @@ def _clamp_vad_frame_ms(val: int) -> int:
     return min(valid, key=lambda v: abs(v - val))
 
 
+_ALLOWED_OPERATING_MODES = frozenset({"AUTONOMOUS", "ASSISTED", "MANUAL", "SAFE_STOP"})
+
+
+def _env_operating_mode(default: str) -> str:
+    """Read OPERATING_MODE from the environment, normalising whitespace and case.
+
+    Returns *default* when the variable is unset or empty, ``"SAFE_STOP"`` when
+    it is set to an unrecognised value, and the normalised (upper-cased) mode
+    string otherwise.
+    """
+    raw = os.getenv("OPERATING_MODE", "").strip().upper()
+    if not raw:
+        return default
+    return raw if raw in _ALLOWED_OPERATING_MODES else "SAFE_STOP"
+
+
 # ---------------------------------------------------------------------------
 # Config dataclass
 # ---------------------------------------------------------------------------
@@ -202,6 +218,11 @@ class RobotConfig:
     MEMORY_DB_PATH: str = "data/conversations.sqlite"
     MEMORY_RETRIEVAL_MODE: str = "fts"
     SEMANTIC_BACKEND: str = "auto"
+
+    # ── Autonomy Modes ────────────────────────────────────────────────────────
+    # Allowed modes: AUTONOMOUS, ASSISTED, MANUAL, SAFE_STOP
+    # If an invalid mode is specified via the environment, it safely falls back to SAFE_STOP.
+    OPERATING_MODE: str = "AUTONOMOUS"
 
     # ── Chat / Retrieval window ───────────────────────────────────────────────
     CHAT_HISTORY_TURNS: int = 4
@@ -309,6 +330,7 @@ class RobotConfig:
             AUDIO_VAD_SPEECH_GATE_DBFS=float(
                 max(-96.0, min(0.0, _env_float("AUDIO_VAD_SPEECH_GATE_DBFS", defaults.AUDIO_VAD_SPEECH_GATE_DBFS)))
             ),
+            OPERATING_MODE=_env_operating_mode(defaults.OPERATING_MODE),
         )
 
 

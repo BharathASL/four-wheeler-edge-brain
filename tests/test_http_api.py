@@ -33,6 +33,7 @@ def _http_post_json(url: str, payload: dict):
 
 def _create_server():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     decision_engine = DecisionEngine()
     executor = ActionExecutor(state_manager=state)
 

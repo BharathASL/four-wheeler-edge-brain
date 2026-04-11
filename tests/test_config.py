@@ -287,6 +287,29 @@ class TestRobotConfigFromEnv:
         monkeypatch.setenv("TELEMETRY_DISABLE_FILE_LOGGING", val)
         assert RobotConfig.from_env().DISABLE_FILE_LOGGING is False
 
+    def test_operating_mode_default(self):
+        assert RobotConfig().OPERATING_MODE == "AUTONOMOUS"
+        assert RobotConfig.from_env().OPERATING_MODE == "AUTONOMOUS"
+
+    @pytest.mark.parametrize("mode", ["AUTONOMOUS", "ASSISTED", "MANUAL", "SAFE_STOP"])
+    def test_operating_mode_valid(self, monkeypatch, mode):
+        monkeypatch.setenv("OPERATING_MODE", mode)
+        assert RobotConfig.from_env().OPERATING_MODE == mode
+
+    @pytest.mark.parametrize("mode", ["autonomous", "Assisted", "manual", "safe_stop"])
+    def test_operating_mode_case_insensitive(self, monkeypatch, mode):
+        monkeypatch.setenv("OPERATING_MODE", mode)
+        assert RobotConfig.from_env().OPERATING_MODE == mode.upper()
+
+    @pytest.mark.parametrize("mode", [" AUTONOMOUS", "ASSISTED ", " MANUAL "])
+    def test_operating_mode_whitespace_stripped(self, monkeypatch, mode):
+        monkeypatch.setenv("OPERATING_MODE", mode)
+        assert RobotConfig.from_env().OPERATING_MODE == mode.strip()
+
+    def test_operating_mode_invalid_fallback(self, monkeypatch):
+        monkeypatch.setenv("OPERATING_MODE", "INVALID_MODE")
+        assert RobotConfig.from_env().OPERATING_MODE == "SAFE_STOP"
+
 
 class TestRobotConfigTypeCoercion:
     def test_float_coercion_from_integer_string(self, monkeypatch):

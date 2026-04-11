@@ -47,6 +47,7 @@ def test_pwm_motor_adapter_delegates_to_backend_methods():
 def test_action_executor_uses_motor_adapter_for_move_and_stop():
     motor = MockMotorAdapter()
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     executor = ActionExecutor(hardware_adapters={"motor": motor}, state_manager=state)
 
     move_result = executor.execute({"action": "MOVE", "params": {"linear_mps": 0.2, "angular_dps": 10.0}})
@@ -63,6 +64,7 @@ def test_action_executor_uses_motor_adapter_for_move_and_stop():
 def test_action_executor_stops_motor_when_safety_blocks_move():
     motor = MockMotorAdapter()
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     state.update(front_proximity_m=0.1, side_proximity_m=0.1)
     executor = ActionExecutor(hardware_adapters={"motor": motor}, state_manager=state)
 
@@ -77,6 +79,7 @@ def test_action_executor_stops_motor_when_safety_blocks_move():
 def test_action_executor_estop_stops_motor_and_allows_followup_stop():
     motor = MockMotorAdapter()
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     executor = ActionExecutor(hardware_adapters={"motor": motor}, state_manager=state)
 
     estop_result = executor.execute({"action": "ESTOP", "params": {}})
@@ -93,6 +96,7 @@ def test_action_executor_returns_error_when_stop_backend_fails():
             raise RuntimeError("stop failed")
 
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     executor = ActionExecutor(hardware_adapters={"motor": _BrokenStopMotor()}, state_manager=state)
 
     result = executor.execute({"action": "STOP", "params": {}})
@@ -115,6 +119,7 @@ def test_action_executor_latches_estop_when_move_backend_fails():
 
     motor = _BrokenMoveMotor()
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     executor = ActionExecutor(hardware_adapters={"motor": motor}, state_manager=state)
 
     result = executor.execute({"action": "MOVE", "params": {"linear_mps": 0.2, "angular_dps": 5.0}})
