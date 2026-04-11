@@ -25,6 +25,13 @@ MEMORY_RETRIEVAL_MODE           str   "fts"                        "fts"|"semant
 SEMANTIC_BACKEND                str   "auto"                       "auto"|"in-memory"|"faiss"
 MODEL_COOLDOWN_SECONDS          float 2.0                          seconds between model calls
 MODEL_TIMEOUT_S                 float 5.0                          model generation timeout
+MOTOR_ADAPTER_MODE              str   "none"                       "none"|"mock"
+MOTOR_PWM_FREQ_HZ               int   1000                         PWM frequency in Hz (clamp 1-50000)
+MOTOR_MAX_DUTY_CYCLE            float 1.0                          max normalized duty cycle (clamp 0.0-1.0)
+MOTOR_DEADBAND_PCT              float 0.05                         min duty threshold for stiction (clamp 0.0-0.5)
+MOTOR_SPEED_TO_DUTY_LINEAR      float 1.0                          linear m/s to duty scaling (clamp 0.01-10.0)
+MOTOR_SPEED_TO_DUTY_ANGULAR     float 1.0                          angular deg/s to duty scaling (clamp 0.01-10.0)
+MOTOR_RAMP_TIME_S               float 0.1                          velocity ramp duration in seconds (clamp 0.0-5.0)
 STT_MODE                        str   "console"                    "console"|"vosk"
 VOSK_MODEL_PATH                 str   ""                           path to Vosk model directory
 STT_SAMPLE_RATE_HZ              int   16000                        input sample rate for STT
@@ -123,6 +130,15 @@ class RobotConfig:
     DEFAULT_TURN_LEFT_DPS: float = 60.0
     DEFAULT_TURN_RIGHT_DPS: float = -60.0
 
+    # ── Mobility adapter/calibration (Phase 2 software foundation) ─────────
+    MOTOR_ADAPTER_MODE: str = "none"
+    MOTOR_PWM_FREQ_HZ: int = 1000
+    MOTOR_MAX_DUTY_CYCLE: float = 1.0
+    MOTOR_DEADBAND_PCT: float = 0.05
+    MOTOR_SPEED_TO_DUTY_LINEAR: float = 1.0
+    MOTOR_SPEED_TO_DUTY_ANGULAR: float = 1.0
+    MOTOR_RAMP_TIME_S: float = 0.1
+
     # ── Timing / Rate-limiting ────────────────────────────────────────────────
     MODEL_TIMEOUT_S: float = 5.0
     MODEL_COOLDOWN_S: float = 2.0
@@ -204,6 +220,21 @@ class RobotConfig:
             defaults,
             MODEL_TIMEOUT_S=_env_float("MODEL_TIMEOUT_S", defaults.MODEL_TIMEOUT_S),
             MODEL_COOLDOWN_S=_env_float("MODEL_COOLDOWN_SECONDS", defaults.MODEL_COOLDOWN_S),
+            MOTOR_ADAPTER_MODE=_env_str("MOTOR_ADAPTER_MODE", defaults.MOTOR_ADAPTER_MODE),
+            MOTOR_PWM_FREQ_HZ=max(1, min(50_000, _env_int("MOTOR_PWM_FREQ_HZ", defaults.MOTOR_PWM_FREQ_HZ))),
+            MOTOR_MAX_DUTY_CYCLE=max(
+                0.0, min(1.0, _env_float("MOTOR_MAX_DUTY_CYCLE", defaults.MOTOR_MAX_DUTY_CYCLE))
+            ),
+            MOTOR_DEADBAND_PCT=max(
+                0.0, min(0.5, _env_float("MOTOR_DEADBAND_PCT", defaults.MOTOR_DEADBAND_PCT))
+            ),
+            MOTOR_SPEED_TO_DUTY_LINEAR=max(
+                0.01, min(10.0, _env_float("MOTOR_SPEED_TO_DUTY_LINEAR", defaults.MOTOR_SPEED_TO_DUTY_LINEAR))
+            ),
+            MOTOR_SPEED_TO_DUTY_ANGULAR=max(
+                0.01, min(10.0, _env_float("MOTOR_SPEED_TO_DUTY_ANGULAR", defaults.MOTOR_SPEED_TO_DUTY_ANGULAR))
+            ),
+            MOTOR_RAMP_TIME_S=max(0.0, min(5.0, _env_float("MOTOR_RAMP_TIME_S", defaults.MOTOR_RAMP_TIME_S))),
             STT_MODE=_env_str("STT_MODE", defaults.STT_MODE),
             VOSK_MODEL_PATH=_env_str("VOSK_MODEL_PATH", defaults.VOSK_MODEL_PATH),
             STT_SAMPLE_RATE_HZ=max(1, _env_int("STT_SAMPLE_RATE_HZ", defaults.STT_SAMPLE_RATE_HZ)),

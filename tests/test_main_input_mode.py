@@ -72,3 +72,51 @@ def test_build_input_listener_vosk_failure_falls_back_to_console():
     assert mode == "console"
     assert listener.__class__.__name__ == "ConsoleInputListener"
     assert logger.messages
+
+
+def test_build_motor_adapter_none_mode_disables_adapter():
+    from main import _build_motor_adapter
+
+    class _Logger:
+        def warning(self, *args, **kwargs):
+            return None
+
+    cfg = RobotConfig(MOTOR_ADAPTER_MODE="none")
+    adapter, mode = _build_motor_adapter(cfg=cfg, logger=_Logger())
+
+    assert adapter is None
+    assert mode == "none"
+
+
+def test_build_motor_adapter_mock_mode_returns_mock_adapter():
+    from main import _build_motor_adapter
+
+    class _Logger:
+        def warning(self, *args, **kwargs):
+            return None
+
+    cfg = RobotConfig(MOTOR_ADAPTER_MODE="mock")
+    adapter, mode = _build_motor_adapter(cfg=cfg, logger=_Logger())
+
+    assert mode == "mock"
+    assert adapter is not None
+    assert adapter.__class__.__name__ == "MockMotorAdapter"
+
+
+def test_build_motor_adapter_unknown_mode_falls_back_to_none():
+    from main import _build_motor_adapter
+
+    class _Logger:
+        def __init__(self):
+            self.messages = []
+
+        def warning(self, *args, **kwargs):
+            self.messages.append(args)
+
+    logger = _Logger()
+    cfg = RobotConfig(MOTOR_ADAPTER_MODE="invalid-mode")
+    adapter, mode = _build_motor_adapter(cfg=cfg, logger=logger)
+
+    assert adapter is None
+    assert mode == "none"
+    assert logger.messages
