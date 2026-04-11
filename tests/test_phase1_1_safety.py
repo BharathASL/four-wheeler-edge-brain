@@ -7,6 +7,7 @@ from src.core.state_manager import StateManager
 
 def test_move_is_clamped_to_max_speed():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     executor = ActionExecutor(state_manager=state)
     action = {"action": "MOVE", "params": {"linear_mps": 10.0, "angular_dps": 100.0}}
 
@@ -20,6 +21,7 @@ def test_move_is_clamped_to_max_speed():
 
 def test_move_blocked_when_proximity_is_too_close():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     state.update(front_proximity_m=0.1, side_proximity_m=0.1)
     executor = ActionExecutor(state_manager=state)
     action = {"action": "MOVE", "params": {"linear_mps": 0.2, "angular_dps": 0.0}}
@@ -32,6 +34,7 @@ def test_move_blocked_when_proximity_is_too_close():
 
 def test_move_stays_simulated_without_motor_adapter():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     executor = ActionExecutor(state_manager=state)
 
     result = executor.execute({"action": "MOVE", "params": {"linear_mps": 0.2, "angular_dps": 5.0}})
@@ -42,6 +45,7 @@ def test_move_stays_simulated_without_motor_adapter():
 
 def test_estop_latch_blocks_actions_until_reset():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     executor = ActionExecutor(state_manager=state)
 
     estop_result = executor.execute({"action": "ESTOP", "params": {}})
@@ -57,6 +61,7 @@ def test_estop_latch_blocks_actions_until_reset():
 
 def test_manual_override_blocks_model_suggestions():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     executor = ActionExecutor(state_manager=state)
 
     executor.execute({"action": "OVERRIDE_ON", "params": {}})
@@ -68,6 +73,7 @@ def test_manual_override_blocks_model_suggestions():
 
 def test_watchdog_triggers_stop_action(poll):
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     # Simulate stale heartbeat before starting watchdog.
     state.set("last_command_ts", time.time() - 10.0)
     seen = []

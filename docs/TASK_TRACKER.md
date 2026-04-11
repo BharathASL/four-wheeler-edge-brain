@@ -192,8 +192,8 @@ This file is the source of truth for planning and progress tracking in the repos
 
 | Task | Phase | Status | Priority | Blocked By | Notes |
 |---|---|---|---|---|---|
-| Define robot operating modes (AUTONOMOUS / ASSISTED / MANUAL / SAFE_STOP) and transition rules | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | None | Safety-first mode switching policy; manual commands allowed only when mode permits |
-| Add goal abstraction layer (intent -> goal object) | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | None | Convert user utterances into goals (go_to_location, follow_person, dock, patrol) rather than raw motor actions |
+| Define robot operating modes (AUTONOMOUS / ASSISTED / MANUAL / SAFE_STOP) and transition rules | Phase 2.2 - Autonomy Core | ✅ Done (Implemented) | P0 | None | Safety-first mode switching policy; manual commands allowed only when mode permits |
+| Add goal abstraction layer (intent -> goal object) | Phase 2.2 - Autonomy Core | ✅ Done (Implemented) | P0 | None | Convert user utterances into goals (go_to_location, follow_person, dock, patrol) rather than raw motor actions |
 | Define and implement unified world/belief state for autonomy | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | Sensor integration baseline | Include pose confidence, obstacle state, battery reserve state, and goal progress |
 | Define planner-controller split (local planner vs wheel command controller) | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | GPIO/PWM mapping design | Planner selects safe waypoint/velocity profile; controller handles actuator-level tracking |
 | Add navigation outcome contract (success/blocked/timeout/unsafe) with fallback behaviors | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | None | Standardize recoverable vs unrecoverable outcomes for higher-level decision logic |

@@ -29,41 +29,42 @@ class DecisionEngine:
         Strategy:
         1. Apply simple rules for urgent or safety commands.
         2. If no rule matches and a model is available, call model for suggestion.
-        3. Always return a dict with `action` and optional `params`.
+        3. Always return a dict with `action`, optional `params` (for compatibility),
+           and normalized `goal` / `meta` schema for the Autonomy mode.
         """
         text = user_input.strip().lower()
 
         if not text:
-            return {"action": "IDLE", "params": {"reason": "EMPTY_COMMAND"}}
+            return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "EMPTY_COMMAND"}}
 
         # Rule: emergency stop takes highest priority.
         if any(k in text for k in ("e-stop", "estop", "emergency stop", "emergency", "hard stop")):
-            return {"action": "ESTOP", "params": {"reason": "USER_REQUEST"}}
+            return {"action": "ESTOP", "goal": {"type": "estop"}, "meta": {"manual_safe": True}, "params": {"reason": "USER_REQUEST"}}
 
         if "reset estop" in text or "reset emergency" in text:
-            return {"action": "RESET_ESTOP", "params": {}}
+            return {"action": "RESET_ESTOP", "goal": {"type": "reset_estop"}, "meta": {"manual_safe": True}, "params": {}}
 
         if any(k in text for k in ("stop", "halt")):
-            return {"action": "STOP", "params": {}}
+            return {"action": "STOP", "goal": {"type": "stop"}, "meta": {"manual_safe": True}, "params": {}}
 
         if "override on" in text:
-            return {"action": "OVERRIDE_ON", "params": {}}
+            return {"action": "OVERRIDE_ON", "goal": {"type": "override_on"}, "meta": {"manual_safe": True}, "params": {}}
         if "override off" in text:
-            return {"action": "OVERRIDE_OFF", "params": {}}
+            return {"action": "OVERRIDE_OFF", "goal": {"type": "override_off"}, "meta": {"manual_safe": True}, "params": {}}
 
         # Rule: battery
         if "charge" in text or "dock" in text:
-            return {"action": "DOCK", "params": {}}
+            return {"action": "DOCK", "goal": {"type": "dock"}, "meta": {"manual_safe": False}, "params": {}}
 
         # Rule: basic movement intents (will be safety-clamped by executor).
         if "forward" in text:
-            return {"action": "MOVE", "params": {"linear_mps": _cfg.DEFAULT_FWD_SPEED_MPS, "angular_dps": 0.0}}
+            return {"action": "MOVE", "goal": {"type": "move", "direction": "forward"}, "meta": {"manual_safe": True}, "params": {"linear_mps": _cfg.DEFAULT_FWD_SPEED_MPS, "angular_dps": 0.0}}
         if "back" in text or "reverse" in text:
-            return {"action": "MOVE", "params": {"linear_mps": _cfg.DEFAULT_BACK_SPEED_MPS, "angular_dps": 0.0}}
+            return {"action": "MOVE", "goal": {"type": "move", "direction": "backward"}, "meta": {"manual_safe": True}, "params": {"linear_mps": _cfg.DEFAULT_BACK_SPEED_MPS, "angular_dps": 0.0}}
         if "left" in text:
-            return {"action": "MOVE", "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_LEFT_DPS}}
+            return {"action": "MOVE", "goal": {"type": "move", "direction": "left"}, "meta": {"manual_safe": True}, "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_LEFT_DPS}}
         if "right" in text:
-            return {"action": "MOVE", "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_RIGHT_DPS}}
+            return {"action": "MOVE", "goal": {"type": "move", "direction": "right"}, "meta": {"manual_safe": True}, "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_RIGHT_DPS}}
 
         # Model fallback
         if self.llama is not None:
@@ -71,6 +72,8 @@ class DecisionEngine:
             if not allowed:
                 return {
                     "action": "IDLE",
+                    "goal": {"type": "idle"},
+                    "meta": {"manual_safe": True},
                     "params": {
                         "reason": "MODEL_COOLDOWN",
                         "confirmation_required": True,
@@ -84,6 +87,8 @@ class DecisionEngine:
                 if not isinstance(resp, str) or not resp.strip():
                     return {
                         "action": "IDLE",
+                        "goal": {"type": "idle"},
+                        "meta": {"manual_safe": True},
                         "params": {
                             "reason": "MODEL_MALFORMED_OUTPUT",
                             "confirmation_required": True,
@@ -97,6 +102,8 @@ class DecisionEngine:
                 # Unknown command path: ask for confirmation and stay safe/idle.
                 return {
                     "action": "IDLE",
+                    "goal": {"type": "idle"},
+                    "meta": {"manual_safe": True},
                     "params": {
                         "reason": "UNKNOWN_COMMAND",
                         "confirmation_required": True,
@@ -104,15 +111,15 @@ class DecisionEngine:
                     },
                 }
             except TimeoutError:
-                return {"action": "IDLE", "params": {"reason": "MODEL_TIMEOUT", "confirmation_required": True}}
+                return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "MODEL_TIMEOUT", "confirmation_required": True}}
             except RuntimeError:
                 # Runtime (native lib missing) — fall back to IDLE so tests/dev don't crash
-                return {"action": "IDLE", "params": {"reason": "MODEL_UNAVAILABLE", "confirmation_required": True}}
+                return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "MODEL_UNAVAILABLE", "confirmation_required": True}}
             except Exception:
-                return {"action": "IDLE", "params": {"reason": "MODEL_ERROR", "confirmation_required": True}}
+                return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "MODEL_ERROR", "confirmation_required": True}}
 
         # Default: unknowns are safe-idle with explicit confirmation requirement.
-        return {"action": "IDLE", "params": {"reason": "UNKNOWN_COMMAND", "confirmation_required": True}}
+        return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "UNKNOWN_COMMAND", "confirmation_required": True}}
 
 
 __all__ = ["DecisionEngine"]

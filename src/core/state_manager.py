@@ -22,6 +22,7 @@ class StateManager:
             "watchdog_triggered": False,
             "front_proximity_m": 1.0,
             "side_proximity_m": 1.0,
+            "operating_mode": "SAFE_STOP",
         }
 
     def get(self, key: str, default: Any = None) -> Any:

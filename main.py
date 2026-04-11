@@ -233,6 +233,7 @@ def simulate_loop(
     logger = init_telemetry("phase1_poc", cfg=cfg)
     model_cooldown_seconds = max(0.0, cfg.MODEL_COOLDOWN_S)
     state = StateManager()
+    state.update(operating_mode=cfg.OPERATING_MODE)
     llama, effective_mode = _build_llama_adapter(
         model_mode=model_mode,
         model_path=model_path,

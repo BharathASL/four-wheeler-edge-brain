@@ -203,6 +203,11 @@ class RobotConfig:
     MEMORY_RETRIEVAL_MODE: str = "fts"
     SEMANTIC_BACKEND: str = "auto"
 
+    # ── Autonomy Modes ────────────────────────────────────────────────────────
+    # Allowed modes: AUTONOMOUS, ASSISTED, MANUAL, SAFE_STOP
+    # If an invalid mode is specified via the environment, it safely falls back to SAFE_STOP.
+    OPERATING_MODE: str = "AUTONOMOUS"
+
     # ── Chat / Retrieval window ───────────────────────────────────────────────
     CHAT_HISTORY_TURNS: int = 4
     RETRIEVAL_TURNS: int = 3
@@ -309,6 +314,7 @@ class RobotConfig:
             AUDIO_VAD_SPEECH_GATE_DBFS=float(
                 max(-96.0, min(0.0, _env_float("AUDIO_VAD_SPEECH_GATE_DBFS", defaults.AUDIO_VAD_SPEECH_GATE_DBFS)))
             ),
+            OPERATING_MODE=_env_str("OPERATING_MODE", defaults.OPERATING_MODE).upper() if _env_str("OPERATING_MODE", "").upper() in ("AUTONOMOUS", "ASSISTED", "MANUAL", "SAFE_STOP") else "SAFE_STOP" if _env_str("OPERATING_MODE", "") else defaults.OPERATING_MODE,
         )
 
 

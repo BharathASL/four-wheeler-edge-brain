@@ -34,6 +34,7 @@ class _FailingSpeechListener:
 
 def test_process_listener_once_runs_full_command_loop():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     decision_engine = DecisionEngine()
     executor = ActionExecutor(state_manager=state)
     listener = _SequenceListener(["go charge and dock"])
@@ -51,6 +52,7 @@ def test_process_listener_once_runs_full_command_loop():
 
 def test_process_listener_once_converts_stt_failure_to_safe_idle():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     decision_engine = DecisionEngine()
     executor = ActionExecutor(state_manager=state)
     listener = _FailingSpeechListener("STT_UNAVAILABLE")
@@ -68,6 +70,7 @@ def test_process_listener_once_converts_stt_failure_to_safe_idle():
 
 def test_process_listener_once_preserves_exit_command():
     state = StateManager()
+    state.update(operating_mode="AUTONOMOUS")
     decision_engine = DecisionEngine()
     executor = ActionExecutor(state_manager=state)
     listener = _SequenceListener(["exit"])

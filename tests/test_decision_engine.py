@@ -35,6 +35,8 @@ def test_decision_rules_stop():
     de = DecisionEngine()
     action = de.decide("Please STOP now", state.snapshot())
     assert action["action"] == "STOP"
+    assert action["goal"]["type"] == "stop"
+    assert action["meta"]["manual_safe"] is True
 
 
 def test_decision_rules_estop():
@@ -42,6 +44,8 @@ def test_decision_rules_estop():
     de = DecisionEngine()
     action = de.decide("emergency stop now", state.snapshot())
     assert action["action"] == "ESTOP"
+    assert action["goal"]["type"] == "estop"
+    assert action["meta"]["manual_safe"] is True
 
 
 def test_decision_rules_dock():
@@ -49,6 +53,8 @@ def test_decision_rules_dock():
     de = DecisionEngine()
     action = de.decide("go charge and dock", state.snapshot())
     assert action["action"] == "DOCK"
+    assert action["goal"]["type"] == "dock"
+    assert action["meta"]["manual_safe"] is False
 
 
 def test_decision_model_fallback():
