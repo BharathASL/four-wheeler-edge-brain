@@ -411,6 +411,28 @@ def extract_known_facts(recent_turns: Sequence[ChatTurn], relevant_turns: Sequen
     return facts
 
 
+def classify_intent(user_text: str) -> str:
+    text = (user_text or "").strip().lower()
+
+    # COMMAND check
+    if any(cmd in text for cmd in ("e-stop", "estop", "emergency stop", "emergency", "hard stop", "stop", "halt", "override", "status")):
+        return "COMMAND"
+
+    # MOTION_GOAL check
+    if any(goal in text for goal in ("go to", "follow", "patrol", "dock", "charge", "forward", "back", "reverse", "left", "right")):
+        return "MOTION_GOAL"
+
+    # CHAT check (question, memory, identity, small-talk)
+    chat_intent = detect_chat_intent(user_text)
+    if chat_intent in ("identity_name", "identity_profile", "memory_meal", "memory_generic", "preference_alias_query", "preference_alias_set"):
+        return "CHAT"
+    if chat_intent == "question" and any(w in text for w in ("who", "what", "where", "when", "why", "how")):
+        return "CHAT"
+
+    # AMBIGUOUS fallback
+    return "AMBIGUOUS"
+
+
 def detect_chat_intent(user_text: str) -> str:
     text = (user_text or "").strip().lower()
     if not text:
@@ -958,6 +980,7 @@ __all__ = [
     "clean_chat_reply",
     "dedupe_relevant_turns",
     "detect_session_directive",
+    "classify_intent",
     "detect_chat_intent",
     "effective_retrieval_limit",
     "extract_alias_preference",

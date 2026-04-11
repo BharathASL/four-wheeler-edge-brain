@@ -148,3 +148,19 @@ def test_invalid_json_returns_400():
             assert payload["error"] == "INVALID_JSON"
     finally:
         server.stop()
+
+def test_post_command_move_forward_not_ambiguous():
+    server = _create_server()
+    try:
+        status, body = _http_post_json(
+            f"http://127.0.0.1:{server.bound_port}/command",
+            {"command": "move forward"},
+        )
+        assert status == 200
+        assert body["status"] == "ok"
+        action_dict = body["outcome"]["action"]
+        assert action_dict["action"] == "MOVE"
+        assert action_dict["goal"]["type"] == "move"
+        assert action_dict["goal"]["direction"] == "forward"
+    finally:
+        server.stop()
