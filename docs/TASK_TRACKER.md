@@ -172,7 +172,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Flash 64-bit OS and configure hostname, user, SSH, and WiFi | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Raspberry Pi hardware | Follow docs/phase0/PI_SETUP.md once Pi arrives |
 | Create docs/phase1_2/HARDWARE_BRINGUP.md (step-by-step bring-up guide) | Phase 1.2 - Pi Hardware Bring-up | 📝 Done (Documented) | P0 | None | Added practical bring-up guide with Pi setup, simulation-to-hardware sequence, validation checklist, and explicit hardware deferrals |
 | Build and validate llama.cpp on ARM (complete TINYLLAMA_SETUP.md build steps) | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Raspberry Pi hardware | TINYLLAMA_SETUP.md has placeholder; fill in concrete ARM build commands |
-| Implement src/motor_adapter.py stub (real + mock, following adapter pattern) | Phase 1.2 - Pi Hardware Bring-up | 🟡 To do | P0 | Motor HAT selection | Extend established adapter pattern; enables unit testing before hardware |
+| Implement src/motor_adapter.py stub (real + mock, following adapter pattern) | Phase 1.2 - Pi Hardware Bring-up | ✅ Done (Implemented) | P0 | None | Completed in Phase 2 mobility track; Pi bring-up now focuses on real hardware validation and wiring |
 | Wire up motors and verify GPIO/PWM signals with basic spin test | Phase 1.2 - Pi Hardware Bring-up | ⛔ Blocked (Hardware) | P0 | Motor hardware + motor_adapter.py | First physical movement validation |
 | Define Phase 1.2 exit criteria (inference running, motors responding to commands) | Phase 1.2 - Pi Hardware Bring-up | 📝 Done (Documented) | P0 | None | Objective gates A–F (+ conditional motor gate) defined in `docs/phase1_2/HARDWARE_BRINGUP.md`; mapped to runbook tests and PASS/PARTIAL/FAIL outcome states in `docs/phase1/PI_VALIDATION_RUNBOOK.md`; gate summary block added to `scripts/phase1_validate_pi.sh` (`feature/phase1-2-exit-criteria`) |
 
@@ -187,6 +187,22 @@ This file is the source of truth for planning and progress tracking in the repos
 | IMU integration for orientation and tilt detection | Phase 2.1 - Sensor Integration | ⛔ Blocked (Hardware) | P1 | IMU hardware | Enables tilt-safety cutoff and future nav orientation |
 | Define sensor fusion policy (weighted average, Kalman filter stub) | Phase 2.1 - Sensor Integration | 🟡 To do | P1 | Sensor selection | Required before integrating multiple sensors into one proximity estimate |
 | Create docs/phase2_1/SENSOR_INTEGRATION.md | Phase 2.1 - Sensor Integration | 🟡 To do | P1 | Sensor selection | Document wiring, driver libraries, and data format |
+
+## Phase 2.2 — Autonomy Core (Goal-Driven Behavior)
+
+| Task | Phase | Status | Priority | Blocked By | Notes |
+|---|---|---|---|---|---|
+| Define robot operating modes (AUTONOMOUS / ASSISTED / MANUAL / SAFE_STOP) and transition rules | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | None | Safety-first mode switching policy; manual commands allowed only when mode permits |
+| Add goal abstraction layer (intent -> goal object) | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | None | Convert user utterances into goals (go_to_location, follow_person, dock, patrol) rather than raw motor actions |
+| Define and implement unified world/belief state for autonomy | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | Sensor integration baseline | Include pose confidence, obstacle state, battery reserve state, and goal progress |
+| Define planner-controller split (local planner vs wheel command controller) | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | GPIO/PWM mapping design | Planner selects safe waypoint/velocity profile; controller handles actuator-level tracking |
+| Add navigation outcome contract (success/blocked/timeout/unsafe) with fallback behaviors | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | None | Standardize recoverable vs unrecoverable outcomes for higher-level decision logic |
+| Implement autonomy recovery behavior library (stuck, deadlock, low-confidence, obstacle loop) | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | Navigation outcome contract | Required for robust real-world autonomy beyond one-shot command execution |
+| Add runtime safety arbiter that can veto planner outputs | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | None | Final authority for speed caps, proximity aborts, geofence/no-go zones |
+| Add mission/task executor for multi-step goals with interruption/resume policy | Phase 2.2 - Autonomy Core | 🟡 To do | P1 | Goal abstraction layer | Needed for conversational missions such as "go there and come back" |
+| Build autonomy evaluation harness and scenario tests | Phase 2.2 - Autonomy Core | 🟡 To do | P1 | Goal abstraction + planner baseline | Metrics: goal completion, intervention rate, safety-stop rate, time-to-goal |
+| Define conversational clarification policy for ambiguous intents | Phase 2.2 - Autonomy Core | 🟡 To do | P1 | Goal abstraction layer | Ask follow-up questions when confidence is low instead of executing unsafe motion |
+| Add battery-aware mission gating and return-reserve policy | Phase 2.2 - Autonomy Core | 🟡 To do | P1 | World state model | Prevent mission start if reserve constraints cannot guarantee safe return/docking |
 
 ## Phase 4.5 — Voice UX & Wake Word
 
@@ -211,11 +227,11 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ## Top Next Actions
 
-1. 🟡 Complete Phase 4.1 comparison: post-processing only vs streaming VAD only vs both together (P2 — Phase 4.1 Audio).
-2. 🟡 Finalize production TTS voice selection (Piper vs Coqui; pyttsx3 remains dev path) (P1 — Phase 4 Audio).
-3. 🟡 Build conversation state machine (listening -> processing -> responding -> idle) to support voice UX (P1 — Phase 4.5).
-4. 🟡 Implement API hardening tasks for remote management (auth + health-check + security model) (P0/P1 — Phase 8).
-5. ⛔ Run end-to-end voice validation (wake word -> STT -> decision engine -> TTS) after audio hardware integration is complete (P0 — Phase 4.5).
+1. 🟡 Define autonomy operating modes and goal abstraction contract (P0 — Phase 2.2 Autonomy Core).
+2. 🟡 Add runtime safety arbiter and navigation outcome contract with recovery policy (P0 — Phase 2.2 Autonomy Core).
+3. 🟡 Define planner-controller split and unified world state for goal-driven behavior (P0 — Phase 2.2 Autonomy Core).
+4. 🟡 Build conversational clarification policy and mission executor for multi-step goals (P1 — Phase 2.2 / Phase 4.5).
+5. 🟡 Implement API hardening tasks for remote management (auth + health-check + security model) (P0/P1 — Phase 8).
 
 ## Infrastructure & Housekeeping
 
@@ -227,4 +243,4 @@ This file is the source of truth for planning and progress tracking in the repos
 
 ---
 
-Last updated: 2026-04-09 (Phase 4.1 streaming VAD implementation merged; remaining audio item is A/B comparison and tracker priorities refreshed)
+Last updated: 2026-04-11 (Autonomy-core planning section added; priorities shifted to goal-driven behavior and safety arbitration)
