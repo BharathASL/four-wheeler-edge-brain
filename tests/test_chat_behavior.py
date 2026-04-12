@@ -598,6 +598,8 @@ def test_generate_chat_reply_prefers_typed_project_slot_in_compound_recall():
     )
 
     assert reply == "From what I remember: your name is Bharath and you are building a robot with 4 wheels."
+
+
 def test_classify_intent_motion_goal():
     assert classify_intent("go to the kitchen") == "MOTION_GOAL"
     assert classify_intent("follow me") == "MOTION_GOAL"
@@ -610,14 +612,17 @@ def test_classify_intent_motion_goal():
     assert classify_intent("move back") == "MOTION_GOAL"
     assert classify_intent("turn right") == "MOTION_GOAL"
 
+
 def test_classify_intent_chat():
     assert classify_intent("what is my name?") == "CHAT"
     assert classify_intent("what did I have for dinner?") == "CHAT"
+
 
 def test_classify_intent_command():
     assert classify_intent("emergency stop") == "COMMAND"
     assert classify_intent("override on") == "COMMAND"
     assert classify_intent("system status") == "COMMAND"
+
 
 def test_classify_intent_ambiguous():
     assert classify_intent("do some random stuff") == "AMBIGUOUS"

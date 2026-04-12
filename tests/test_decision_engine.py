@@ -165,6 +165,7 @@ def test_decision_engine_sanitizes_model_hint_for_user_display():
     assert action["params"]["reason"] == "UNKNOWN_COMMAND"
     assert action["params"]["model_hint"] == "I did not understand that command well enough to act safely."
 
+
 def test_decision_motion_goals_mapping():
     state = StateManager()
     de = DecisionEngine()
@@ -178,6 +179,7 @@ def test_decision_motion_goals_mapping():
     assert action2["goal"]["type"] == "move"
     assert action2["goal"]["direction"] == "forward"
 
+
 def test_decision_single_ambiguous_clarification():
     state = StateManager()
     de = DecisionEngine()
@@ -189,15 +191,16 @@ def test_decision_single_ambiguous_clarification():
     assert action["params"]["confirmation_required"] is True
     assert "model_hint" in action["params"]
 
+
 def test_decision_double_ambiguous_fallback():
     de = DecisionEngine()
-    state = StateManager()
+    state = {}
 
-    action1 = de.decide("make me a sandwich", state.snapshot())
-    assert de.last_was_ambiguous is True
+    action1 = de.decide("make me a sandwich", state)
+    assert state.get("last_was_ambiguous") is True
 
-    action2 = de.decide("do some random stuff", state.snapshot())
+    action2 = de.decide("do some random stuff", state)
     assert action2["action"] == "IDLE"
     assert action2["params"]["reason"] == "AMBIGUOUS_FALLBACK"
     assert action2["params"]["confirmation_required"] is True
-    assert de.last_was_ambiguous is False
+    assert state.get("last_was_ambiguous") is False

@@ -22,7 +22,6 @@ class DecisionEngine:
         self.llama = llama_adapter
         self.model_timeout = model_timeout
         self.model_rate_limiter = model_rate_limiter or ModelRateLimiter(0.0)
-        self.last_was_ambiguous = False
 
     def decide(self, user_input: str, state: Dict[str, Any]) -> Dict[str, Any]:
         """Return a structured ACTION dict.
@@ -56,34 +55,37 @@ class DecisionEngine:
         intent = classify_intent(text)
 
         if intent == "MOTION_GOAL":
-            self.last_was_ambiguous = False
+            state["last_was_ambiguous"] = False
             if "go to" in text:
-                target = text.split("go to")[1].strip()
-                return {"action": "MOVE", "goal": {"type": "go_to_location", "target": target}, "meta": {"manual_safe": False}, "params": {}}
-            if "come to me" in text or "follow" in text:
+                target = text.split("go to", 1)[1].strip()
+                if target:
+                    return {"action": "MOVE", "goal": {"type": "go_to_location", "target": target}, "meta": {"manual_safe": False}, "params": {}}
+                # Fall through to ambiguous flow if empty target
+                intent = "AMBIGUOUS"
+            elif "come to me" in text or "follow" in text:
                 return {"action": "MOVE", "goal": {"type": "follow_person", "target": "nearest_person"}, "meta": {"manual_safe": False}, "params": {}}
-            if "patrol" in text:
+            elif "patrol" in text:
                 return {"action": "MOVE", "goal": {"type": "patrol", "zone": "current_area"}, "meta": {"manual_safe": False}, "params": {}}
-            if "dock" in text or "charge" in text:
+            elif "dock" in text or "charge" in text:
                 return {"action": "DOCK", "goal": {"type": "dock"}, "meta": {"manual_safe": False}, "params": {}}
-            if "forward" in text:
+            elif "forward" in text:
                 return {"action": "MOVE", "goal": {"type": "move", "direction": "forward"}, "meta": {"manual_safe": True}, "params": {"linear_mps": _cfg.DEFAULT_FWD_SPEED_MPS, "angular_dps": 0.0}}
-            if "back" in text or "reverse" in text:
+            elif "back" in text or "reverse" in text:
                 return {"action": "MOVE", "goal": {"type": "move", "direction": "backward"}, "meta": {"manual_safe": True}, "params": {"linear_mps": _cfg.DEFAULT_BACK_SPEED_MPS, "angular_dps": 0.0}}
-            if "left" in text:
+            elif "left" in text:
                 return {"action": "MOVE", "goal": {"type": "move", "direction": "left"}, "meta": {"manual_safe": True}, "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_LEFT_DPS}}
-            if "right" in text:
+            elif "right" in text:
                 return {"action": "MOVE", "goal": {"type": "move", "direction": "right"}, "meta": {"manual_safe": True}, "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_RIGHT_DPS}}
 
         if intent == "AMBIGUOUS":
-            if self.last_was_ambiguous:
-                self.last_was_ambiguous = False
+            if state.get("last_was_ambiguous", False):
+                state["last_was_ambiguous"] = False
                 return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "AMBIGUOUS_FALLBACK", "confirmation_required": True}}
             else:
-                self.last_was_ambiguous = True
+                state["last_was_ambiguous"] = True
                 return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "UNKNOWN_COMMAND", "confirmation_required": True, "model_hint": "Could you clarify what you mean?"}}
 
-        self.last_was_ambiguous = False
+        state["last_was_ambiguous"] = False
 
         # Model fallback
         if self.llama is not None:

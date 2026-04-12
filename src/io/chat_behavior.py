@@ -418,16 +418,17 @@ def classify_intent(user_text: str) -> str:
     if any(cmd in text for cmd in ("e-stop", "estop", "emergency stop", "emergency", "hard stop", "stop", "halt", "override", "status")):
         return "COMMAND"
 
-    # MOTION_GOAL check
-    if any(goal in text for goal in ("go to", "follow", "patrol", "dock", "charge", "forward", "back", "reverse", "left", "right")):
-        return "MOTION_GOAL"
-
     # CHAT check (question, memory, identity, small-talk)
     chat_intent = detect_chat_intent(user_text)
     if chat_intent in ("identity_name", "identity_profile", "memory_meal", "memory_generic", "preference_alias_query", "preference_alias_set"):
         return "CHAT"
     if chat_intent == "question" and any(w in text for w in ("who", "what", "where", "when", "why", "how")):
         return "CHAT"
+
+    # MOTION_GOAL check (more strict to avoid false positive on common words)
+    motion_pattern = r"\b(go to|follow|patrol|dock|charge|forward|back|reverse|left|right)\b"
+    if re.search(motion_pattern, text):
+        return "MOTION_GOAL"
 
     # AMBIGUOUS fallback
     return "AMBIGUOUS"
