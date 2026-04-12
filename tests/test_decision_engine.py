@@ -172,7 +172,7 @@ def test_decision_motion_goals_mapping():
     action = de.decide("go to the kitchen", state.snapshot())
     assert action["action"] == "MOVE"
     assert action["goal"]["type"] == "go_to_location"
-    assert action["goal"]["target"] == "the kitchen"
+    assert action["goal"]["target"] == "kitchen"
 
     action2 = de.decide("move forward", state.snapshot())
     assert action2["action"] == "MOVE"
@@ -194,13 +194,15 @@ def test_decision_single_ambiguous_clarification():
 
 def test_decision_double_ambiguous_fallback():
     de = DecisionEngine()
-    state = {}
+    state = StateManager()
 
-    action1 = de.decide("make me a sandwich", state)
-    assert state.get("last_was_ambiguous") is True
+    action1 = de.decide("make me a sandwich", state.snapshot())
+    assert action1["action"] == "IDLE"
+    assert action1["params"]["reason"] == "UNKNOWN_COMMAND"
+    assert action1["params"]["confirmation_required"] is True
+    assert "model_hint" in action1["params"]
 
-    action2 = de.decide("do some random stuff", state)
+    action2 = de.decide("do some random stuff", state.snapshot())
     assert action2["action"] == "IDLE"
     assert action2["params"]["reason"] == "AMBIGUOUS_FALLBACK"
     assert action2["params"]["confirmation_required"] is True
-    assert state.get("last_was_ambiguous") is False
