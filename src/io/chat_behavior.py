@@ -426,7 +426,7 @@ def classify_intent(user_text: str) -> str:
         return "CHAT"
 
     # MOTION_GOAL check (more strict to avoid false positive on common words)
-    motion_pattern = r"\b(go to|come to me|follow|patrol|dock|charge|(?:move|go|turn|drive)\s+(?:forward|back|reverse|left|right))\b"
+    motion_pattern = r"\b(go to|come to me|follow|patrol|dock|charge|(?:move|go|turn|drive)\s+(?:forward|backward|back|reverse|left|right))\b"
     if re.search(motion_pattern, text):
         return "MOTION_GOAL"
 

@@ -165,7 +165,7 @@ def process_command_text(user_input, state, decision_engine, executor):
         return None
 
     state.set("last_command_ts", time.time())
-    action = decision_engine.decide(user_input, state.snapshot())
+    action = decision_engine.decide(user_input, state)
     result = executor.execute(action)
     if action.get("action") == "DOCK":
         state.update(is_charging=True, is_idle=True)
