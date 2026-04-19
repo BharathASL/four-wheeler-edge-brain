@@ -201,7 +201,7 @@ This file is the source of truth for planning and progress tracking in the repos
 | Add runtime safety arbiter that can veto planner outputs | Phase 2.2 - Autonomy Core | 🟡 To do | P0 | None | Final authority for speed caps, proximity aborts, geofence/no-go zones |
 | Add mission/task executor for multi-step goals with interruption/resume policy | Phase 2.2 - Autonomy Core | 🟡 To do | P1 | Goal abstraction layer | Needed for conversational missions such as "go there and come back" |
 | Build autonomy evaluation harness and scenario tests | Phase 2.2 - Autonomy Core | 🟡 To do | P1 | Goal abstraction + planner baseline | Metrics: goal completion, intervention rate, safety-stop rate, time-to-goal |
-| Define conversational clarification policy for ambiguous intents | Phase 2.2 - Autonomy Core | 🟡 To do | P1 | Goal abstraction layer | Ask follow-up questions when confidence is low instead of executing unsafe motion |
+| Define conversational clarification policy for ambiguous intents | Phase 2.2 - Autonomy Core | ✅ Done (Implemented) | P1 | Goal abstraction layer | Ask follow-up questions when confidence is low instead of executing unsafe motion |
 | Add battery-aware mission gating and return-reserve policy | Phase 2.2 - Autonomy Core | 🟡 To do | P1 | World state model | Prevent mission start if reserve constraints cannot guarantee safe return/docking |
 
 ## Phase 4.5 — Voice UX & Wake Word

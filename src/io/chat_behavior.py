@@ -411,6 +411,29 @@ def extract_known_facts(recent_turns: Sequence[ChatTurn], relevant_turns: Sequen
     return facts
 
 
+def classify_intent(user_text: str) -> str:
+    text = (user_text or "").strip().lower()
+
+    # COMMAND check
+    if re.search(r"\b(e-stop|estop|emergency stop|emergency|hard stop|stop|halt|override|status)\b", text):
+        return "COMMAND"
+
+    # CHAT check (question, memory, identity, small-talk)
+    chat_intent = detect_chat_intent(user_text)
+    if chat_intent in ("identity_name", "identity_profile", "memory_meal", "memory_generic", "preference_alias_query", "preference_alias_set"):
+        return "CHAT"
+    if chat_intent == "question" and re.search(r"\b(?:who|what|where|when|why|how)\b", text):
+        return "CHAT"
+
+    # MOTION_GOAL check (more strict to avoid false positive on common words)
+    motion_pattern = r"\b(go to|come to me|follow|patrol|dock|charge|(?:move|go|turn|drive)\s+(?:forward|back|reverse|left|right))\b"
+    if re.search(motion_pattern, text):
+        return "MOTION_GOAL"
+
+    # AMBIGUOUS fallback
+    return "AMBIGUOUS"
+
+
 def detect_chat_intent(user_text: str) -> str:
     text = (user_text or "").strip().lower()
     if not text:
@@ -958,6 +981,7 @@ __all__ = [
     "clean_chat_reply",
     "dedupe_relevant_turns",
     "detect_session_directive",
+    "classify_intent",
     "detect_chat_intent",
     "effective_retrieval_limit",
     "extract_alias_preference",
