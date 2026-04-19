@@ -4,6 +4,7 @@ This module exposes a `DecisionEngine` class that accepts input text and
 returns a structured ACTION dict. The implementation below is intentionally
 minimal for Phase‑1 and suitable for unit testing with mocked adapters.
 """
+import threading
 import re
 from typing import Dict, Any
 
@@ -11,7 +12,6 @@ from src.io.chat_behavior import sanitize_user_facing_reply, classify_intent
 from src.config import RobotConfig as _cfg
 from src.io.input_sanitizer import sanitize_for_model_prompt
 from src.core.model_rate_limiter import ModelRateLimiter
-from src.core.state_manager import StateManager
 
 
 class DecisionEngine:
@@ -24,8 +24,17 @@ class DecisionEngine:
         self.llama = llama_adapter
         self.model_timeout = model_timeout
         self.model_rate_limiter = model_rate_limiter or ModelRateLimiter(0.0)
+        self._conversation_state = threading.local()
 
-    def decide(self, user_input: str, state: StateManager) -> Dict[str, Any]:
+    @property
+    def last_was_ambiguous(self) -> bool:
+        return getattr(self._conversation_state, "last_was_ambiguous", False)
+
+    @last_was_ambiguous.setter
+    def last_was_ambiguous(self, value: bool) -> None:
+        self._conversation_state.last_was_ambiguous = value
+
+    def decide(self, user_input: str, state: Dict[str, Any]) -> Dict[str, Any]:
         """Return a structured ACTION dict.
 
         Strategy:
@@ -36,37 +45,30 @@ class DecisionEngine:
         """
         text = user_input.strip().lower()
 
-        # Save previous ambiguous state before any early return resets it.
-        prev_was_ambiguous = state.get("last_was_ambiguous", False)
-
         if not text:
-            state.set("last_was_ambiguous", False)
             return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "EMPTY_COMMAND"}}
 
         # Rule: emergency stop takes highest priority.
         if any(k in text for k in ("e-stop", "estop", "emergency stop", "emergency", "hard stop")):
-            state.set("last_was_ambiguous", False)
             return {"action": "ESTOP", "goal": {"type": "estop"}, "meta": {"manual_safe": True}, "params": {"reason": "USER_REQUEST"}}
 
         if "reset estop" in text or "reset emergency" in text:
-            state.set("last_was_ambiguous", False)
             return {"action": "RESET_ESTOP", "goal": {"type": "reset_estop"}, "meta": {"manual_safe": True}, "params": {}}
 
         if any(k in text for k in ("stop", "halt")):
-            state.set("last_was_ambiguous", False)
             return {"action": "STOP", "goal": {"type": "stop"}, "meta": {"manual_safe": True}, "params": {}}
 
         if "override on" in text:
-            state.set("last_was_ambiguous", False)
             return {"action": "OVERRIDE_ON", "goal": {"type": "override_on"}, "meta": {"manual_safe": True}, "params": {}}
         if "override off" in text:
-            state.set("last_was_ambiguous", False)
             return {"action": "OVERRIDE_OFF", "goal": {"type": "override_off"}, "meta": {"manual_safe": True}, "params": {}}
 
         intent = classify_intent(text)
 
+        import re
+
         if intent == "MOTION_GOAL":
-            state.set("last_was_ambiguous", False)
+            self.last_was_ambiguous = False
             if "go to" in text:
                 target = text.split("go to", 1)[1].strip()
                 target = re.sub(r"^(the|a|an)\s+", "", target)
@@ -90,14 +92,14 @@ class DecisionEngine:
                 return {"action": "MOVE", "goal": {"type": "move", "direction": "right"}, "meta": {"manual_safe": True}, "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_RIGHT_DPS}}
 
         if intent == "AMBIGUOUS":
-            if prev_was_ambiguous:
-                state.set("last_was_ambiguous", False)
+            if self.last_was_ambiguous:
+                self.last_was_ambiguous = False
                 return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "AMBIGUOUS_FALLBACK", "confirmation_required": True}}
             else:
-                state.set("last_was_ambiguous", True)
+                self.last_was_ambiguous = True
                 return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "UNKNOWN_COMMAND", "confirmation_required": True, "model_hint": "Could you clarify what you mean?"}}
 
-        state.set("last_was_ambiguous", False)
+        self.last_was_ambiguous = False
 
         # Model fallback
         if self.llama is not None:
@@ -114,7 +116,7 @@ class DecisionEngine:
                     },
                 }
             safe_input = sanitize_for_model_prompt(user_input)
-            prompt = f"Decide action for input: {safe_input}\nState: {state.snapshot()}\nReturn JSON with action and params."
+            prompt = f"Decide action for input: {safe_input}\nState: {state}\nReturn JSON with action and params."
             try:
                 resp = self.llama.generate(prompt, max_tokens=128, timeout=self.model_timeout)
                 if not isinstance(resp, str) or not resp.strip():

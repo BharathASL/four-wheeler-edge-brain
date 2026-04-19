@@ -25,7 +25,7 @@ def test_smoke_flow():
     assert tts.spoken_texts[-1] == "system ready"
 
     de = DecisionEngine(llama_adapter=llama)
-    action = de.decide("please dock", state)
+    action = de.decide("please dock", state.snapshot())
     assert isinstance(action, dict)
 
     state_override = StateManager()
