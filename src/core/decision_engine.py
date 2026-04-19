@@ -5,6 +5,7 @@ returns a structured ACTION dict. The implementation below is intentionally
 minimal for Phase‑1 and suitable for unit testing with mocked adapters.
 """
 import threading
+import re
 from typing import Dict, Any
 
 from src.io.chat_behavior import sanitize_user_facing_reply, classify_intent
@@ -23,8 +24,15 @@ class DecisionEngine:
         self.llama = llama_adapter
         self.model_timeout = model_timeout
         self.model_rate_limiter = model_rate_limiter or ModelRateLimiter(0.0)
-        self.last_was_ambiguous = False
-        self._lock = threading.Lock()
+        self._conversation_state = threading.local()
+
+    @property
+    def last_was_ambiguous(self) -> bool:
+        return getattr(self._conversation_state, "last_was_ambiguous", False)
+
+    @last_was_ambiguous.setter
+    def last_was_ambiguous(self, value: bool) -> None:
+        self._conversation_state.last_was_ambiguous = value
 
     def decide(self, user_input: str, state: Dict[str, Any]) -> Dict[str, Any]:
         """Return a structured ACTION dict.
@@ -60,8 +68,7 @@ class DecisionEngine:
         import re
 
         if intent == "MOTION_GOAL":
-            with self._lock:
-                self.last_was_ambiguous = False
+            self.last_was_ambiguous = False
             if "go to" in text:
                 target = text.split("go to", 1)[1].strip()
                 target = re.sub(r"^(the|a|an)\s+", "", target)
@@ -85,20 +92,14 @@ class DecisionEngine:
                 return {"action": "MOVE", "goal": {"type": "move", "direction": "right"}, "meta": {"manual_safe": True}, "params": {"linear_mps": 0.0, "angular_dps": _cfg.DEFAULT_TURN_RIGHT_DPS}}
 
         if intent == "AMBIGUOUS":
-            with self._lock:
-                was_ambig = self.last_was_ambiguous
-                if was_ambig:
-                    self.last_was_ambiguous = False
-                else:
-                    self.last_was_ambiguous = True
-
-            if was_ambig:
+            if self.last_was_ambiguous:
+                self.last_was_ambiguous = False
                 return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "AMBIGUOUS_FALLBACK", "confirmation_required": True}}
             else:
+                self.last_was_ambiguous = True
                 return {"action": "IDLE", "goal": {"type": "idle"}, "meta": {"manual_safe": True}, "params": {"reason": "UNKNOWN_COMMAND", "confirmation_required": True, "model_hint": "Could you clarify what you mean?"}}
 
-        with self._lock:
-            self.last_was_ambiguous = False
+        self.last_was_ambiguous = False
 
         # Model fallback
         if self.llama is not None:

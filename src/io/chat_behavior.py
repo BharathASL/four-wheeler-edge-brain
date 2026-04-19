@@ -415,14 +415,14 @@ def classify_intent(user_text: str) -> str:
     text = (user_text or "").strip().lower()
 
     # COMMAND check
-    if any(cmd in text for cmd in ("e-stop", "estop", "emergency stop", "emergency", "hard stop", "stop", "halt", "override", "status")):
+    if re.search(r"\b(e-stop|estop|emergency stop|emergency|hard stop|stop|halt|override|status)\b", text):
         return "COMMAND"
 
     # CHAT check (question, memory, identity, small-talk)
     chat_intent = detect_chat_intent(user_text)
     if chat_intent in ("identity_name", "identity_profile", "memory_meal", "memory_generic", "preference_alias_query", "preference_alias_set"):
         return "CHAT"
-    if chat_intent == "question" and any(w in text for w in ("who", "what", "where", "when", "why", "how")):
+    if chat_intent == "question" and re.search(r"\b(?:who|what|where|when|why|how)\b", text):
         return "CHAT"
 
     # MOTION_GOAL check (more strict to avoid false positive on common words)

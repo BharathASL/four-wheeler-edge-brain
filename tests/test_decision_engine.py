@@ -63,8 +63,9 @@ def test_decision_model_fallback():
     llama.load_model("mock")
     de = DecisionEngine(llama_adapter=llama)
 
-    # Send a text that classifies as CHAT, avoiding AMBIGUOUS.
-    # The detect_chat_intent will classify "what is my favorite color" as CHAT.
+    # Send a text that should be detected as a granular chat intent
+    # (for example, "question"), which classify_intent() then maps to CHAT,
+    # avoiding the AMBIGUOUS path.
     action = de.decide("what is my favorite color", state.snapshot())
     assert action["action"] == "IDLE"
     assert action["params"].get("reason") == "UNKNOWN_COMMAND"
