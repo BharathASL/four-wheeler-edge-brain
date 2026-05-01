@@ -32,6 +32,8 @@ MOTOR_DEADBAND_PCT              float 0.05                         min duty thre
 MOTOR_SPEED_TO_DUTY_LINEAR      float 1.0                          linear m/s to duty scaling (clamp 0.01-10.0)
 MOTOR_SPEED_TO_DUTY_ANGULAR     float 1.0                          angular deg/s to duty scaling (clamp 0.01-10.0)
 MOTOR_RAMP_TIME_S               float 0.1                          velocity ramp duration in seconds (clamp 0.0-5.0)
+TTS_BACKEND                     str   "pyttsx3"                    "pyttsx3"|"piper"|"mock"
+PIPER_VOICE_MODEL               str   ""                           path to .onnx Piper voice model file
 STT_MODE                        str   "console"                    "console"|"vosk"
 VOSK_MODEL_PATH                 str   ""                           path to Vosk model directory
 STT_SAMPLE_RATE_HZ              int   16000                        input sample rate for STT
@@ -167,6 +169,13 @@ class RobotConfig:
     WATCHDOG_TICK_S: float = 0.5
     WATCHDOG_TIMEOUT_S: float = 60.0
 
+    # ── TTS ───────────────────────────────────────────────────────────────────
+    # TTS_BACKEND: "pyttsx3" (legacy/dev), "piper" (neural, Pi-compatible), "mock"
+    TTS_BACKEND: str = "pyttsx3"
+    # Path to a Piper .onnx voice model file; required when TTS_BACKEND="piper".
+    # Download voices from https://github.com/rhasspy/piper/releases
+    PIPER_VOICE_MODEL: str = ""
+
     # ── Audio ─────────────────────────────────────────────────────────────────
     AUDIO_RECORD_DURATION_S: float = 3.0
     STT_MODE: str = "console"
@@ -256,6 +265,8 @@ class RobotConfig:
                 0.01, min(10.0, _env_float("MOTOR_SPEED_TO_DUTY_ANGULAR", defaults.MOTOR_SPEED_TO_DUTY_ANGULAR))
             ),
             MOTOR_RAMP_TIME_S=max(0.0, min(5.0, _env_float("MOTOR_RAMP_TIME_S", defaults.MOTOR_RAMP_TIME_S))),
+            TTS_BACKEND=_env_str("TTS_BACKEND", defaults.TTS_BACKEND),
+            PIPER_VOICE_MODEL=_env_str("PIPER_VOICE_MODEL", defaults.PIPER_VOICE_MODEL),
             STT_MODE=_env_str("STT_MODE", defaults.STT_MODE),
             VOSK_MODEL_PATH=_env_str("VOSK_MODEL_PATH", defaults.VOSK_MODEL_PATH),
             STT_SAMPLE_RATE_HZ=max(1, _env_int("STT_SAMPLE_RATE_HZ", defaults.STT_SAMPLE_RATE_HZ)),
