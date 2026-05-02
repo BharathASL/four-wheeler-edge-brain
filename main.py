@@ -32,12 +32,20 @@ def _print_exit_loading() -> None:
     print()
 
 
-def _build_tts(enabled: bool):
+def _build_tts(enabled: bool, cfg: RobotConfig = None):
+    """Construct the TTS adapter selected by ``cfg.TTS_BACKEND``.
+
+    Falls back to the pyttsx3 adapter when *cfg* is not provided (legacy call
+    sites) or when the backend is unrecognised.
+    """
     if not enabled:
         return None
 
-    from src.adapters.tts_adapter import Pyttsx3TTSAdapter
+    from src.adapters.tts_adapter import get_tts_adapter, Pyttsx3TTSAdapter
 
+    if cfg is not None:
+        return get_tts_adapter(cfg)
+    # Legacy fallback — no config supplied.
     return Pyttsx3TTSAdapter()
 
 
@@ -273,7 +281,7 @@ def simulate_loop(
     )
 
     try:
-        tts = _build_tts(enable_tts)
+        tts = _build_tts(enable_tts, cfg=cfg)
     except RuntimeError as exc:
         logger.warning("TTS disabled: %s", exc)
 
